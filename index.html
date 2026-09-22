@@ -45,51 +45,59 @@
             </button>
         </div>
 
-       <!-- Encadré d'ajout de test compact -->
-        <div class="bg-white rounded-xl shadow-sm border border-slate-200 mb-6 p-4">
-            <div class="flex flex-col md:flex-row gap-4 items-center justify-between">
-                <div class="flex items-center gap-3 w-full md:w-auto">
-                    <h2 class="text-sm font-semibold text-slate-800 flex items-center gap-1.5 whitespace-nowrap">
-                        <svg class="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
-                        Ajouter un test :
-                    </h2>
-                    <span id="label-groupe-actif" class="text-[11px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-normal">Groupe : Tous</span>
-                </div>
-                
-                <div class="w-full md:w-1/3">
-                    <select id="select-exercice" class="w-full border border-slate-300 rounded-lg p-2 text-xs font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer appearance-none bg-slate-50">
-                        <option value="">-- Sélectionner un test --</option>
-                    </select>
-                </div>
-
-                <div id="zone-boutons-stanine" class="flex gap-1.5 opacity-30 pointer-events-none transition-opacity duration-300">
-                    <span class="text-xs text-slate-500 font-medium mr-1 flex items-center">Score :</span>
-                </div>
-            </div>
-            <p id="message-confirmation" class="text-green-600 text-xs font-medium mt-2 text-center md:text-left hidden">✅ Score enregistré avec succès !</p>
-        </div>
-
         <!-- CONTENEUR GLOBAL EN 2 COLONNES (50% / 50%) -->
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
             
-            <!-- COLONNE GAUCHE : Bandeaux (Prend 6 colonnes sur 12 = 50%) -->
-            <div class="lg:col-span-6 bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-                <div class="grid grid-cols-12 gap-2 p-4 border-b border-slate-200 text-xs font-semibold text-slate-500 uppercase tracking-wider bg-slate-50">
-                    <div class="col-span-6">Exercice</div>
-                    <div class="col-span-4 text-center">Niveau</div>
-                    <div class="col-span-1 text-center">Moy</div>
-                    <div class="col-span-1 text-center">Dern</div>
+            <!-- COLONNE GAUCHE (Prend 6 colonnes sur 12 = 50%) : Ajout de test + Liste des exercices -->
+            <div class="lg:col-span-6 space-y-6">
+                
+                <!-- Encadré d'ajout de test (même largeur que la liste) -->
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
+                    <div class="flex flex-col gap-3">
+                        <div class="flex items-center justify-between">
+                            <h2 class="text-sm font-semibold text-slate-800 flex items-center gap-1.5">
+                                <svg class="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                                Ajouter un test :
+                            </h2>
+                            <span id="label-groupe-actif" class="text-[11px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-normal">Groupe : Tous</span>
+                        </div>
+                        
+                        <div class="w-full">
+                            <select id="select-exercice" class="w-full border border-slate-300 rounded-lg p-2 text-xs font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer appearance-none bg-slate-50">
+                                <option value="">-- Sélectionner un test --</option>
+                            </select>
+                        </div>
+
+                        <div id="zone-boutons-stanine" class="flex flex-wrap gap-1 opacity-30 pointer-events-none transition-opacity duration-300">
+                            <span class="text-xs text-slate-500 font-medium mr-1 flex items-center">Score :</span>
+                        </div>
+                    </div>
+                    <p id="message-confirmation" class="text-green-600 text-xs font-medium mt-2 text-center hidden">✅ Score enregistré avec succès !</p>
                 </div>
-                <div id="exercices-list" class="max-h-[700px] overflow-y-auto">
-                    <!-- Injecté par JS -->
+
+                <!-- Liste des exercices -->
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                    <div class="grid grid-cols-12 gap-2 p-4 border-b border-slate-200 text-xs font-semibold text-slate-500 uppercase tracking-wider bg-slate-50">
+                        <div class="col-span-6">Exercice</div>
+                        <div class="col-span-4 text-center">Niveau</div>
+                        <div class="col-span-1 text-center">Moy</div>
+                        <div class="col-span-1 text-center">Dern</div>
+                    </div>
+                    <div id="exercices-list" class="max-h-[600px] overflow-y-auto">
+                        <!-- Injecté par JS -->
+                    </div>
                 </div>
+
             </div>
 
-            <!-- COLONNE DROITE : Espace réservé pour la grille de mini-courbes (Prend 6 colonnes sur 12 = 50%) -->
-            <div class="lg:col-span-6 bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-                <h3 class="text-sm font-bold uppercase tracking-wider text-slate-500 mb-4 border-b pb-2">Vue Graphique Globale du Groupe</h3>
+            <!-- COLONNE DROITE (Prend 6 colonnes sur 12 = 50%) : Vue graphique globale remontée tout en haut -->
+            <div class="lg:col-span-6 bg-white rounded-xl shadow-sm border border-slate-200 p-6 sticky top-4">
+                <h3 class="text-sm font-bold uppercase tracking-wider text-slate-500 mb-4 border-b pb-2 flex justify-between items-center">
+                    <span>Vue Graphique Globale du Groupe</span>
+                    <span id="titre-groupe-droite" class="text-xs text-blue-600 font-normal">Tous les exercices</span>
+                </h3>
                 <div id="grille-mini-courbes" class="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[700px] overflow-y-auto pr-2">
-                    <p class="text-xs text-slate-400 col-span-2 text-center py-12">Sélectionnez un groupe ou un exercice pour afficher les courbes de synthèse.</p>
+                    <p class="text-xs text-slate-400 col-span-2 text-center py-12">Sélectionnez un exercice ou un groupe pour afficher les courbes de synthèse.</p>
                 </div>
             </div>
 
