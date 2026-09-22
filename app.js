@@ -130,8 +130,8 @@ const getColorForClass = (num) => {
         2: '#E84E0F',
         3: '#F18700',
         4: '#FBBA00',
-        5: '#ffe600ef',
-        6: '#D3D800',
+        5: '#ffe600e8',
+        6: '#9ed800',
         7: '#02B74B',
         8: '#009ED4',
         9: '#003366'
@@ -142,7 +142,7 @@ const getColorForClass = (num) => {
 
 const getTextColorForClass = (num) => {
     const rounded = Math.min(9, Math.max(1, Math.round(num)));
-    return rounded === 9 ? '#ffffff' : '#0f172a'; // Blanc pour 9, Noir/Ardoise sombre pour 1 à 8
+    return rounded === 9 ? '#ffffff' : '#0f172a';
 };
 
 const getPointColor = (val) => getColorForClass(val);
@@ -436,12 +436,12 @@ function genererSyntheseDroite() {
 
     const moyenneGenerale = nbCatsValides > 0 ? (sommeTotaleMoyennes / nbCatsValides) : null;
 
-    // 1. Barre de moyenne générale en haut
+    // 1. Barre de moyenne générale en haut (chiffre en gris neutre text-slate-700)
     containerBarres.innerHTML += `
         <div class="bg-slate-50 p-3 rounded-xl border border-slate-200">
             <div class="flex justify-between items-center mb-1.5 text-xs font-bold text-slate-700">
                 <span>Moyenne</span>
-                <span class="text-sm font-extrabold" style="color: ${moyenneGenerale !== null ? getColorForClass(Math.floor(moyenneGenerale)) : '#94a3b8'}">
+                <span class="text-sm font-extrabold text-slate-700">
                     ${moyenneGenerale !== null ? moyenneGenerale.toFixed(1) : '—'}
                 </span>
             </div>
@@ -450,7 +450,7 @@ function genererSyntheseDroite() {
         <div class="border-t my-3"></div>
     `;
 
-    // 2. Barres pour chaque catégorie
+    // 2. Barres pour chaque catégorie (chiffre en gris neutre text-slate-600)
     if (nomsCats.length === 0) {
         containerBarres.innerHTML += `<p class="text-xs text-slate-400 text-center py-4">Aucune catégorie définie pour ce groupe.</p>`;
     } else {
@@ -460,7 +460,7 @@ function genererSyntheseDroite() {
                 <div class="py-1">
                     <div class="flex justify-between items-center mb-1 text-xs">
                         <span class="font-medium text-slate-600 truncate max-w-[75%]" title="${nomCat}">📁 ${nomCat}</span>
-                        <span class="font-bold text-xs" style="color: ${moyCat !== null ? getColorForClass(Math.floor(moyCat)) : '#94a3b8'}">
+                        <span class="font-bold text-xs text-slate-600">
                             ${moyCat !== null ? moyCat.toFixed(1) : '—'}
                         </span>
                     </div>
