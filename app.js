@@ -98,7 +98,7 @@ async function enregistrerScore(scoreStanine) {
     statsGlobales[exerciceSelectionne].scores.push(scoreStanine);
     statsGlobales[exerciceSelectionne].dates.push(dateJour);
     
-    await supabaseClient.from('scores').insert([
+    await supabaseClient.from('scores'].insert([
         { date_test: dateJour, exercice: exerciceSelectionne, score_stanine: scoreStanine }
     ]);
 
@@ -123,7 +123,7 @@ async function supprimerGroupeDansCloud(nomGroupe) {
     await supabaseClient.from('groupes').delete().eq('nom', nomGroupe);
 }
 
-// Palette de couleurs officielle exacte des classes Stanine
+// Palette de couleurs officielle et couleur de texte conditionnelle (noir de 1 à 8, blanc pour 9)
 const getColorForClass = (num) => {
     const colors = {
         1: '#E30613',
@@ -140,9 +140,12 @@ const getColorForClass = (num) => {
     return colors[rounded] || '#003366';
 };
 
-const getPointColor = (val) => {
-    return getColorForClass(val);
+const getTextColorForClass = (num) => {
+    const rounded = Math.min(9, Math.max(1, Math.round(num)));
+    return rounded === 9 ? '#ffffff' : '#0f172a'; // Blanc pour 9, Noir/Ardoise sombre pour 1 à 8
 };
+
+const getPointColor = (val) => getColorForClass(val);
 
 // --- 5. INTERFACE & NAVIGATION ---
 function afficherNavigationGroupes() {
@@ -200,8 +203,9 @@ function initFormulaire() {
     for (let i = 1; i <= 9; i++) {
         const btn = document.createElement('button');
         btn.textContent = i;
-        btn.className = "w-8 h-8 rounded text-white font-bold text-xs transition-transform hover:scale-110 active:scale-95 shadow-sm";
+        btn.className = "w-8 h-8 rounded font-bold text-xs transition-transform hover:scale-110 active:scale-95 shadow-sm";
         btn.style.backgroundColor = getColorForClass(i);
+        btn.style.color = getTextColorForClass(i);
         btn.onclick = () => enregistrerScore(i);
         zoneBoutons.appendChild(btn);
     }
@@ -346,7 +350,7 @@ function rendreLigneExerciceCompacte(ex) {
     }
 
     const bgMoyenne = moyenne !== '-' ? getColorForClass(moyenne) : '#f1f5f9';
-    const textMoyenne = moyenne !== '-' ? '#ffffff' : '#94a3b8';
+    const textMoyenne = moyenne !== '-' ? getTextColorForClass(moyenne) : '#94a3b8';
     const textDernier = dernier !== '-' ? getColorForClass(dernier) : '#94a3b8';
 
     const scoresRecents = donnees.scores.slice(-20);
@@ -357,7 +361,8 @@ function rendreLigneExerciceCompacte(ex) {
     } else {
         scoresRecents.forEach(score => {
             const couleur = getColorForClass(score);
-            html20Derniers += `<div class="w-5 h-5 rounded flex items-center justify-center text-[10px] font-bold text-white shadow-2xs" style="background-color: ${couleur}">${score}</div>`;
+            const couleurTexte = getTextColorForClass(score);
+            html20Derniers += `<div class="w-5 h-5 rounded flex items-center justify-center text-[10px] font-bold shadow-2xs" style="background-color: ${couleur}; color: ${couleurTexte};">${score}</div>`;
         });
     }
 
@@ -373,10 +378,10 @@ function rendreLigneExerciceCompacte(ex) {
                 ${html20Derniers}
             </div>
             <div class="col-span-1 flex justify-center">
-                <div class="w-6 h-6 rounded flex items-center justify-center text-xs font-bold shadow-sm" style="background-color: ${bgMoyenne}; color: ${textMoyenne}">${moyenne}</div>
+                <div class="w-6 h-6 rounded flex items-center justify-center text-xs font-bold shadow-sm" style="background-color: ${bgMoyenne}; color: ${textMoyenne};">${moyenne}</div>
             </div>
             <div class="col-span-1 flex justify-center">
-                <div class="w-6 h-6 flex items-center justify-center font-bold text-sm" style="color: ${textDernier}">${dernier}</div>
+                <div class="w-6 h-6 flex items-center justify-center font-bold text-sm" style="color: ${textDernier};">${dernier}</div>
             </div>
         </div>
     `;
@@ -481,9 +486,7 @@ function genererHtmlBarreProgression(valeurMoyenne) {
         `;
     }
     
-    // Calcul du pourcentage sur une échelle de 9
     const pourcentage = Math.min(100, Math.max(0, (valeurMoyenne / 9) * 100));
-    // Utilisation de la classe inférieure (Math.floor) pour la couleur
     const classeInferieure = Math.floor(valeurMoyenne) || 1;
     const couleur = getColorForClass(classeInferieure);
 
@@ -774,11 +777,12 @@ function rendreListeEssais(donnees) {
         const date = donnees.dates[i];
         const idScore = donnees.ids[i];
         const couleur = getColorForClass(score);
+        const couleurTexte = getTextColorForClass(score);
         container.innerHTML += `
             <div class="flex justify-between items-center bg-slate-50 border border-slate-100 p-3 rounded-xl text-xs shadow-2xs">
                 <span class="text-slate-500 font-medium">Essai du ${date}</span>
                 <div class="flex items-center gap-3">
-                    <span class="font-bold px-2.5 py-1 rounded-lg text-white" style="background-color: ${couleur}">Stanine ${score}</span>
+                    <span class="font-bold px-2.5 py-1 rounded-lg" style="background-color: ${couleur}; color: ${couleurTexte};">Stanine ${score}</span>
                     <button onclick="supprimerScore(${idScore}, '${exerciceActuelDrawer}')" class="text-slate-400 hover:text-red-600 font-bold p-1">🗑️</button>
                 </div>
             </div>
