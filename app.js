@@ -154,7 +154,7 @@ function afficherNavigationGroupes() {
     if(labelActif) labelActif.textContent = `Groupe : ${groupeActif}`;
     
     const titreDroite = document.getElementById('titre-groupe-droite');
-    if(titreDroite) titreDroite.textContent = groupeActif === 'Tous' ? 'Tous les exercices' : `Groupe : ${groupeActif}`;
+    if(titreDroite) titreDroite.textContent = groupeActif === 'Tous' ? 'Tous' : groupeActif;
 
     const bandeauCat = document.getElementById('bandeau-gestion-categories');
     const fallbackTous = document.getElementById('fallback-liste-tous');
@@ -246,7 +246,7 @@ function genererBandeauxGauche() {
     }
 }
 
-// --- RENDU DIRECT DES CATÉGORIES ET DE LA SECTION "AUTRES TESTS" DANS LE BANDEAU ---
+// --- RENDU DIRECT DES CATÉGORIES ET DE LEURS EXERCICES ---
 function renderCategoriesDirectementDansBandeau() {
     const container = document.getElementById('conteneur-categories-avec-exercices');
     if (!container) return;
@@ -268,7 +268,7 @@ function renderCategoriesDirectementDansBandeau() {
         return;
     }
 
-    // 1. Afficher chaque catégorie et ses exercices
+    // 1. Catégories
     nomsCats.forEach(nomCat => {
         const exList = (sousCats[nomCat] || []).filter(ex => exercicesDuGroupe.includes(ex));
         
@@ -296,7 +296,7 @@ function renderCategoriesDirectementDansBandeau() {
         `;
     });
 
-    // 2. Calculer et afficher le bloc "Autres tests" pour les exercices du groupe non assignés à une catégorie (anti-doublons)
+    // 2. Autres tests (anti-doublons)
     const tousExClasses = [];
     Object.values(sousCats).forEach(liste => tousExClasses.push(...liste));
     const exercicesNonClasses = exercicesDuGroupe.filter(ex => !tousExClasses.includes(ex));
@@ -322,7 +322,7 @@ function renderCategoriesDirectementDansBandeau() {
     }
 }
 
-// Ligne d'exercice compacte
+// Ligne d'exercice compacte avec les 30 derniers résultats au milieu
 function rendreLigneExerciceCompacte(ex) {
     const donnees = statsGlobales[ex] || { scores: [], dates: [], ids: [] };
     const nbEssais = donnees.scores.length;
@@ -339,30 +339,34 @@ function rendreLigneExerciceCompacte(ex) {
     const textMoyenne = moyenne !== '-' ? '#ffffff' : '#94a3b8';
     const textDernier = dernier !== '-' ? getPointColor(dernier) : '#94a3b8';
 
-    let htmlCarres = '';
-    for (let i = 1; i <= 9; i++) {
-        const atteint = donnees.scores.includes(i);
-        const couleur = atteint ? getPointColor(i) : '#f1f5f9';
-        const textColor = atteint ? '#ffffff' : '#cbd5e1';
-        htmlCarres += `<div class="w-4 h-4 rounded flex items-center justify-center text-[9px] font-bold" style="background-color: ${couleur}; color: ${textColor}">${i}</div>`;
+    const scoresRecents = donnees.scores.slice(-30);
+    let html30Derniers = '';
+    
+    if (scoresRecents.length === 0) {
+        html30Derniers = `<span class="text-[10px] text-slate-400 italic">Aucun essai</span>`;
+    } else {
+        scoresRecents.forEach(score => {
+            const couleur = getPointColor(score);
+            html30Derniers += `<div class="w-5 h-5 rounded flex items-center justify-center text-[10px] font-bold text-white shadow-2xs" style="background-color: ${couleur}">${score}</div>`;
+        });
     }
 
     return `
-        <div onclick="ouvrirDrawer('${ex}')" class="grid grid-cols-12 gap-2 p-2.5 items-center hover:bg-slate-50 transition-colors cursor-pointer text-xs">
-            <div class="col-span-6 flex items-center gap-2">
+        <div onclick="ouvrirDrawer('${ex}')" class="grid grid-cols-12 gap-2 p-3 items-center hover:bg-slate-50 transition-colors cursor-pointer text-xs">
+            <div class="col-span-4 flex items-center gap-2">
                 <div>
                     <div class="font-semibold text-slate-800 text-xs">${ex}</div>
                     <div class="text-[10px] text-slate-400">${nbEssais} essai(s)</div>
                 </div>
             </div>
-            <div class="col-span-4 flex items-center justify-center gap-0.5">
-                ${htmlCarres}
+            <div class="col-span-6 flex items-center justify-center gap-1 flex-wrap max-h-16 overflow-hidden px-2">
+                ${html30Derniers}
             </div>
             <div class="col-span-1 flex justify-center">
-                <div class="w-5 h-5 rounded flex items-center justify-center text-[10px] font-bold shadow-sm" style="background-color: ${bgMoyenne}; color: ${textMoyenne}">${moyenne}</div>
+                <div class="w-6 h-6 rounded flex items-center justify-center text-xs font-bold shadow-sm" style="background-color: ${bgMoyenne}; color: ${textMoyenne}">${moyenne}</div>
             </div>
             <div class="col-span-1 flex justify-center">
-                <div class="w-5 h-5 flex items-center justify-center font-bold text-xs" style="color: ${textDernier}">${dernier}</div>
+                <div class="w-6 h-6 flex items-center justify-center font-bold text-sm" style="color: ${textDernier}">${dernier}</div>
             </div>
         </div>
     `;
@@ -523,7 +527,7 @@ function genererGrilleDroite() {
     }
 
     if (exercicesAffiches.length === 0) {
-        grilleContainer.innerHTML = `<p class="text-xs text-slate-400 col-span-2 text-center py-12">Aucun exercice dans ce groupe.</p>`;
+        grilleContainer.innerHTML = `<p class="text-xs text-slate-400 text-center py-12">Aucun exercice dans ce groupe.</p>`;
         return;
     }
 
@@ -540,7 +544,7 @@ function genererGrilleDroite() {
                     <span class="font-bold text-xs text-slate-700 truncate max-w-[70%]" title="${ex}">${ex}</span>
                     <span class="text-[11px] font-bold px-2 py-0.5 rounded text-white" style="background-color: ${couleurDernier}">Dernier : ${dernier}</span>
                 </div>
-                <div class="relative h-32 w-full">
+                <div class="relative h-28 w-full">
                     <canvas id="${carteId}"></canvas>
                 </div>
             </div>
@@ -561,8 +565,8 @@ function genererGrilleDroite() {
                             borderWidth: 2,
                             tension: 0.1,
                             pointBackgroundColor: context => getPointColor(context.raw),
-                            pointRadius: 4,
-                            pointHoverRadius: 6
+                            pointRadius: 3,
+                            pointHoverRadius: 5
                         }]
                     },
                     options: {

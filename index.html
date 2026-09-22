@@ -45,11 +45,11 @@
             </button>
         </div>
 
-        <!-- CONTENEUR GLOBAL EN 2 COLONNES (50% / 50%) -->
+        <!-- CONTENEUR GLOBAL EN 2 COLONNES : 3/4 (9 col) pour la gauche, 1/4 (3 col) pour la droite -->
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
             
-            <!-- COLONNE GAUCHE -->
-            <div class="lg:col-span-6 space-y-6">
+            <!-- COLONNE GAUCHE (75% de la page) -->
+            <div class="lg:col-span-9 space-y-6">
                 
                 <!-- Encadré d'ajout de test compact -->
                 <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
@@ -75,7 +75,7 @@
                     <p id="message-confirmation" class="text-green-600 text-xs font-medium mt-2 text-center hidden">✅ Score enregistré avec succès !</p>
                 </div>
 
-                <!-- BANDEAU "GÉRER LES CATÉGORIES" QUI CONTIENT DIRECTEMENT LES BLOCS DE CATÉGORIES ET LEURS EXERCICES -->
+                <!-- BANDEAU "GÉRER LES CATÉGORIES" (Contient les blocs de catégories + Autres tests) -->
                 <div id="bandeau-gestion-categories" class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 hidden">
                     <div class="flex items-center justify-between mb-4 border-b pb-3">
                         <h3 class="text-sm font-semibold text-slate-800 flex items-center gap-1.5">
@@ -87,17 +87,16 @@
                         </button>
                     </div>
 
-                    <!-- Conteneur où les catégories et leurs tests s'affichent directement -->
                     <div id="conteneur-categories-avec-exercices" class="space-y-4">
                         <!-- Injecté par JS -->
                     </div>
                 </div>
 
-                <!-- Si aucun groupe n'est sélectionné ("Tous"), on garde la liste globale classique -->
+                <!-- Fallback si "Tous" est sélectionné -->
                 <div id="fallback-liste-tous" class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
                     <div class="grid grid-cols-12 gap-2 p-3 border-b border-slate-200 text-xs font-semibold text-slate-500 uppercase tracking-wider bg-slate-50">
-                        <div class="col-span-6">Exercice</div>
-                        <div class="col-span-4 text-center">Niveau</div>
+                        <div class="col-span-4">Exercice</div>
+                        <div class="col-span-6 text-center">30 derniers résultats</div>
                         <div class="col-span-1 text-center">Moy</div>
                         <div class="col-span-1 text-center">Dern</div>
                     </div>
@@ -108,14 +107,14 @@
 
             </div>
 
-            <!-- COLONNE DROITE -->
-            <div class="lg:col-span-6 bg-white rounded-xl shadow-sm border border-slate-200 p-6 sticky top-4">
-                <h3 class="text-sm font-bold uppercase tracking-wider text-slate-500 mb-4 border-b pb-2 flex justify-between items-center">
-                    <span>Vue Graphique Globale du Groupe</span>
-                    <span id="titre-groupe-droite" class="text-xs text-blue-600 font-normal">Tous les exercices</span>
+            <!-- COLONNE DROITE (25% de la page - Synthèse) -->
+            <div class="lg:col-span-3 bg-white rounded-xl shadow-sm border border-slate-200 p-4 sticky top-4">
+                <h3 class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-3 border-b pb-2 flex justify-between items-center">
+                    <span>Synthèse</span>
+                    <span id="titre-groupe-droite" class="text-[11px] text-blue-600 font-normal">Tous</span>
                 </h3>
-                <div id="grille-mini-courbes" class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <p class="text-xs text-slate-400 col-span-2 text-center py-12">Sélectionnez un groupe pour afficher les graphiques de synthèse.</p>
+                <div id="grille-mini-courbes" class="grid grid-cols-1 gap-3 max-h-[700px] overflow-y-auto pr-1">
+                    <p class="text-xs text-slate-400 text-center py-12">Sélectionnez un groupe.</p>
                 </div>
             </div>
 
@@ -148,7 +147,7 @@
         </div>
     </div>
 
-    <!-- MODALE DE CRÉATION ET D'ÉDITION DES CATÉGORIES (Style de ton image) -->
+    <!-- MODALE DE CRÉATION ET D'ÉDITION DES CATÉGORIES -->
     <div id="modal-categories" class="fixed inset-0 bg-black/50 hidden flex items-center justify-center z-50 p-4">
         <div class="bg-white rounded-2xl max-w-3xl w-full p-6 shadow-xl max-h-[90vh] overflow-y-auto">
             <div class="flex justify-between items-center mb-4 border-b pb-3">
@@ -156,20 +155,19 @@
                 <button onclick="fermerModalCategories()" class="text-slate-400 hover:text-slate-600 text-xl font-bold">&times;</button>
             </div>
 
-            <!-- Formulaire de création / édition d'une catégorie -->
             <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 mb-6 space-y-4">
                 <h4 class="text-sm font-semibold text-slate-700">Ajouter ou modifier une catégorie</h4>
                 <input type="hidden" id="edit-cat-ancien-nom" value="">
                 
                 <div>
                     <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Nom de la catégorie</label>
-                    <input type="text" id="input-nom-cat" placeholder="Ex: Attention, Raisonnement, Spatial..." class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <input type="text" id="input-nom-cat" placeholder="Ex: Mémorisation, Spatial, Attention..." class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
                 </div>
 
                 <div>
                     <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Sélectionner les exercices (parmi ceux du groupe)</label>
                     <div id="liste-checkboxes-exercices-groupe" class="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto p-2 bg-white rounded-lg border border-slate-200">
-                        <!-- Cases à cocher injectées par JS -->
+                        <!-- Injecté par JS -->
                     </div>
                 </div>
 
@@ -179,7 +177,6 @@
                 </div>
             </div>
 
-            <!-- Liste des catégories existantes pour ce groupe avec bouton engrenage ⚙️ -->
             <div>
                 <h4 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">Catégories actuelles de ce groupe</h4>
                 <div id="liste-categories-existantes" class="space-y-3 max-h-60 overflow-y-auto">
