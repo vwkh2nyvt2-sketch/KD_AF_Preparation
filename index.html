@@ -99,66 +99,92 @@
         </div>
     </div>
 
-    <!-- PANNEAU LATÉRAL DE DÉTAIL D'UN EXERCICE (TIROIR) -->
+    <!-- PANNEAU LATÉRAL DE DÉTAIL ÉLARGI (TIROIR TYPE PILOTEST) -->
     <div id="drawer-detail" class="fixed inset-0 bg-black/50 hidden z-50 flex justify-end transition-opacity duration-300">
-        <div class="bg-white w-full max-w-2xl h-full shadow-2xl flex flex-col overflow-y-auto transform transition-transform duration-300">
+        <div class="bg-white w-full max-w-4xl h-full shadow-2xl flex flex-col overflow-y-auto transform transition-transform duration-300">
             
             <!-- En-tête du Tiroir -->
-            <div class="p-6 border-b border-slate-200 flex justify-between items-center bg-slate-50 sticky top-0 z-10">
+            <div class="p-6 border-b border-slate-200 flex justify-between items-center bg-white sticky top-0 z-10 shadow-sm">
                 <div>
-                    <h2 id="drawer-titre-exercice" class="text-xl font-bold text-slate-900">Nom de l'exercice</h2>
-                    <p id="drawer-sous-titre" class="text-xs text-slate-500">Exercice Pilotest</p>
+                    <h2 id="drawer-titre-exercice" class="text-2xl font-bold text-slate-900">Nom de l'exercice</h2>
+                    <p id="drawer-sous-titre" class="text-xs text-slate-500 mt-0.5">Exercice Pilotest • 0 essais au total</p>
                 </div>
                 <div class="flex items-center gap-3">
-                    <a id="drawer-lien-pilotest" href="https://www.pilotest.com" target="_blank" class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-3 py-2 rounded-lg shadow-sm transition-colors flex items-center gap-1.5">
+                    <a id="drawer-lien-pilotest" href="https://www.pilotest.com" target="_blank" class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-4 py-2.5 rounded-xl shadow-sm transition-colors flex items-center gap-2">
                         Pratiquer sur Pilotest ↗
                     </a>
-                    <button onclick="fermerDrawer()" class="text-slate-400 hover:text-slate-600 text-2xl font-bold p-1">&times;</button>
+                    <button onclick="fermerDrawer()" class="text-slate-400 hover:text-slate-600 text-2xl font-bold p-2">&times;</button>
                 </div>
             </div>
 
             <!-- Corps du Tiroir -->
-            <div class="p-6 space-y-6 flex-1">
+            <div class="p-8 space-y-8 flex-1 bg-slate-50/50">
                 
-                <!-- Blocs Statistiques -->
-                <div class="grid grid-cols-3 gap-4">
-                    <div class="bg-slate-50 border border-slate-200 rounded-xl p-4 text-center">
-                        <div class="text-[10px] uppercase font-bold text-slate-400 tracking-wider mb-1">Moyenne</div>
-                        <div id="drawer-stat-moyenne" class="text-2xl font-extrabold text-slate-700">-</div>
-                        <div class="text-[11px] text-slate-500 mt-0.5">depuis le début</div>
+                <!-- Blocs Statistiques (Cartes du haut) -->
+                <div class="grid grid-cols-3 gap-6">
+                    <div class="bg-white border border-slate-200/80 rounded-2xl p-5 text-center shadow-sm">
+                        <div class="text-[11px] uppercase font-bold text-slate-400 tracking-wider mb-2">KD TOOLS</div>
+                        <div id="drawer-stat-moyenne" class="text-3xl font-extrabold text-slate-700">-</div>
+                        <div class="text-[11px] text-slate-400 mt-1">moyenne depuis 30 jours</div>
                     </div>
-                    <div class="bg-slate-50 border border-slate-200 rounded-xl p-4 text-center">
-                        <div class="text-[10px] uppercase font-bold text-slate-400 tracking-wider mb-1">Dernier</div>
-                        <div id="drawer-stat-dernier" class="text-2xl font-extrabold text-slate-700">-</div>
-                        <div class="text-[11px] text-slate-500 mt-0.5">récent</div>
+                    <div class="bg-white border border-slate-200/80 rounded-2xl p-5 text-center shadow-sm">
+                        <div class="text-[11px] uppercase font-bold text-slate-400 tracking-wider mb-2">PILOTEST</div>
+                        <div id="drawer-stat-dernier" class="text-3xl font-extrabold text-slate-700">-</div>
+                        <div class="text-[11px] text-slate-400 mt-1">dernier score</div>
                     </div>
-                    <div class="bg-slate-50 border border-slate-200 rounded-xl p-4 text-center">
-                        <div class="text-[10px] uppercase font-bold text-slate-400 tracking-wider mb-1">Record</div>
-                        <div id="drawer-stat-record" class="text-2xl font-extrabold text-slate-700">-</div>
-                        <div class="text-[11px] text-slate-500 mt-0.5">meilleur score</div>
+                    <div class="bg-white border border-slate-200/80 rounded-2xl p-5 text-center shadow-sm">
+                        <div class="text-[11px] uppercase font-bold text-slate-400 tracking-wider mb-2">RECORD</div>
+                        <div id="drawer-stat-record" class="text-3xl font-extrabold text-slate-700">-</div>
+                        <div id="drawer-date-record" class="text-[11px] text-slate-400 mt-1">meilleur score</div>
                     </div>
                 </div>
 
-                <!-- Graphique Barres -->
-                <div class="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-                    <h3 class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-3">Répartition des essais par score (1 à 9)</h3>
-                    <div class="relative h-44 w-full">
+                <!-- Section : Niveau global / Calibration -->
+                <div class="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-sm">
+                    <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-4">Niveau global (Répartition Stanine)</h3>
+                    <div class="grid grid-cols-9 gap-1 text-center font-bold text-white text-sm rounded-lg overflow-hidden h-10 shadow-inner">
+                        <div class="bg-red-500 flex items-center justify-center">1</div>
+                        <div class="bg-amber-500 flex items-center justify-center">2</div>
+                        <div class="bg-amber-400 flex items-center justify-center">3</div>
+                        <div class="bg-lime-500 flex items-center justify-center">4</div>
+                        <div class="bg-emerald-500 flex items-center justify-center">5</div>
+                        <div class="bg-emerald-400 flex items-center justify-center">6</div>
+                        <div class="bg-teal-300 flex items-center justify-center text-slate-800">7</div>
+                        <div class="bg-sky-200 flex items-center justify-center text-slate-800">8</div>
+                        <div class="bg-blue-400 flex items-center justify-center">9</div>
+                    </div>
+                    <div class="flex justify-between text-[11px] text-slate-400 mt-2 px-1">
+                        <span>20 %</span>
+                        <span>40</span>
+                        <span>56</span>
+                        <span>70</span>
+                        <span>81</span>
+                        <span>89</span>
+                        <span>100 %</span>
+                    </div>
+                </div>
+
+                <!-- Graphique Barres : Régularité (Répartition des essais) -->
+                <div class="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-sm">
+                    <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-1">Régularité des essais</h3>
+                    <p id="drawer-sous-titre-regularite" class="text-xs text-slate-500 mb-4">Répartition par score</p>
+                    <div class="relative h-52 w-full">
                         <canvas id="barChart"></canvas>
                     </div>
                 </div>
 
-                <!-- Graphique Ligne -->
-                <div class="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-                    <h3 class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-3">Évolution depuis le début</h3>
-                    <div class="relative h-56 w-full">
+                <!-- Graphique Ligne : Évolution -->
+                <div class="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-sm">
+                    <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-4">Évolution depuis le début</h3>
+                    <div class="relative h-64 w-full">
                         <canvas id="evolutionChart"></canvas>
                     </div>
                 </div>
 
-                <!-- Historique -->
-                <div class="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-                    <h3 class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-3">Tous les essais depuis le début</h3>
-                    <div id="drawer-liste-essais" class="space-y-2 max-h-48 overflow-y-auto pr-1">
+                <!-- Historique textuel -->
+                <div class="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-sm">
+                    <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-4">Tous les essais depuis le début</h3>
+                    <div id="drawer-liste-essais" class="space-y-2.5 max-h-56 overflow-y-auto pr-2">
                         <!-- Injecté par JS -->
                     </div>
                 </div>
