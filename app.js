@@ -1,5 +1,5 @@
 // --- 1. CONNEXION SUPABASE ---
-const SUPABASE_URL = 'https://bansqfbzsdjovlaewrvx.supabase.co/rest/v1/';
+const SUPABASE_URL = 'https://bansqfbzsdjovlaewrvx.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_-r-98cutZLtigCMEhfILOQ_uXX1byh0';
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
