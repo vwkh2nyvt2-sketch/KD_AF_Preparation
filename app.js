@@ -484,3 +484,41 @@ async function demarrerDashboard() {
     genererBandeaux();
 }
 demarrerDashboard();
+
+// --- FONCTION D'EXPORTATION EXCEL (CSV) ---
+window.exporterVersExcel = async function() {
+    // Récupérer tous les scores directement depuis Supabase pour être sûr d'avoir l'historique complet
+    const { data: scoresData, error } = await supabaseClient.from('scores').select('*').order('id', { ascending: true });
+
+    if (error) {
+        alert("❌ Erreur lors de la récupération des données pour l'export.");
+        console.error(error);
+        return;
+    }
+
+    if (!scoresData || scoresData.length === 0) {
+        alert("⚠️ Aucun score à exporter pour le moment !");
+        return;
+    }
+
+    // Créer l'en-tête du fichier CSV (séparé par des points-virgules pour Excel en français)
+    let csvContent = "data:text/csv;charset=utf-8,\uFEFF"; // \uFEFF pour forcer l'encodage UTF-8 sous Excel
+    csvContent += "Date;Exercice;Score Stanine\n";
+
+    // Ajouter chaque ligne de score
+    scoresData.forEach(row => {
+        csvContent += `${row.date_test};${row.exercice};${row.score_stanine}\n`;
+    });
+
+    // Créer un lien de téléchargement invisible
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    
+    const dateDuJour = new Date().toLocaleDateString('fr-FR').replace(/\//g, '_');
+    link.setAttribute("download", `suivi_cadets_pilotest_${dateDuJour}.csv`);
+    
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+}
