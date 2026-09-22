@@ -486,7 +486,7 @@ async function demarrerDashboard() {
 demarrerDashboard();
 
 // --- FONCTION D'EXPORTATION EXCEL (CSV) ---
-window.exporterVersExcel = async function() {
+window.ExporterVersExcel = async function() {
     // Récupérer tous les scores directement depuis Supabase pour être sûr d'avoir l'historique complet
     const { data: scoresData, error } = await supabaseClient.from('scores').select('*').order('id', { ascending: true });
 
