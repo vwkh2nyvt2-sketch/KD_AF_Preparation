@@ -41,7 +41,7 @@
             </div>
             <button onclick="ouvrirModalGroupes()" class="text-sm font-medium text-blue-600 hover:text-blue-800 flex items-center gap-1.5 bg-blue-50 px-3 py-1.5 rounded-lg transition-colors">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
-                Créer / Modifier les groupes
+                Gérer les Groupes
             </button>
         </div>
 
@@ -75,20 +75,19 @@
                     <p id="message-confirmation" class="text-green-600 text-xs font-medium mt-2 text-center hidden">✅ Score enregistré avec succès !</p>
                 </div>
 
-                <!-- NOUVEAU : Bandeau de gestion des sous-catégories (style identique à l'ajout) -->
-                <div id="bandeau-sous-cat-container" class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 hidden">
-                    <div class="flex items-center justify-between mb-3">
+                <!-- BANDEAU "GÉRER LES CATÉGORIES" (Affiché uniquement dans un groupe) -->
+                <div id="bandeau-gestion-categories" class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 hidden">
+                    <div class="flex items-center justify-between mb-3 border-b pb-2">
                         <h3 class="text-sm font-semibold text-slate-800 flex items-center gap-1.5">
-                            <svg class="w-4 h-4 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path></svg>
-                            Gérer les sous-catégories
+                            <svg class="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+                            Gérer les catégories
                         </h3>
+                        <button onclick="ouvrirModalCategories()" class="text-xs font-medium text-indigo-600 hover:text-indigo-800 bg-indigo-50 px-2.5 py-1 rounded-lg flex items-center gap-1">
+                            ⚙️ Éditer / Créer
+                        </button>
                     </div>
-                    <div class="flex gap-2 mb-3">
-                        <input type="text" id="input-nom-sous-cat-rapide" placeholder="Nom de la sous-catégorie (ex: Mémorisation)..." class="flex-1 border border-slate-300 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                        <button onclick="creerSousCategorieRapide()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-lg text-xs font-medium transition-colors">Créer</button>
-                    </div>
-                    <div id="liste-sous-cat-bandeau" class="space-y-2 max-h-48 overflow-y-auto pr-1">
-                        <!-- Injecté par JS -->
+                    <div id="resume-categories-actif" class="space-y-2">
+                        <!-- Résumé des catégories existantes injecté par JS -->
                     </div>
                 </div>
 
@@ -121,18 +120,18 @@
         </div>
     </main>
 
-    <!-- MODALE DE GESTION DES GROUPES (PRINCIPAUX) -->
+    <!-- MODALE DE GESTION DES GROUPES PRINCIPAUX -->
     <div id="modal-groupes" class="fixed inset-0 bg-black/50 hidden flex items-center justify-center z-50 p-4">
         <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-xl max-h-[90vh] overflow-y-auto">
             <div class="flex justify-between items-center mb-4 border-b pb-3">
-                <h3 class="text-lg font-bold text-slate-900">Gestion des Groupes Principaux</h3>
+                <h3 class="text-lg font-bold text-slate-900">Gestion des Groupes</h3>
                 <button onclick="fermerModalGroupes()" class="text-slate-400 hover:text-slate-600 text-xl font-bold">&times;</button>
             </div>
             
             <div class="mb-6 bg-slate-50 p-4 rounded-xl border border-slate-200">
-                <h4 class="text-sm font-semibold text-slate-700 mb-2">Créer un nouveau groupe principal</h4>
+                <h4 class="text-sm font-semibold text-slate-700 mb-2">Créer un nouveau groupe</h4>
                 <div class="flex gap-2">
-                    <input type="text" id="input-nom-groupe" placeholder="Ex: PSY1, Entraînement Semaine..." class="flex-1 border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <input type="text" id="input-nom-groupe" placeholder="Ex: PSY1, Entraînement..." class="flex-1 border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
                     <button onclick="creerGroupe()" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700">Créer</button>
                 </div>
             </div>
@@ -143,6 +142,51 @@
 
             <div class="mt-6 text-right">
                 <button onclick="fermerModalGroupes()" class="bg-slate-800 text-white px-5 py-2 rounded-xl text-sm font-medium hover:bg-slate-900">Fermer</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODALE DE CRÉATION ET D'ÉDITION DES CATÉGORIES (Style de ton image) -->
+    <div id="modal-categories" class="fixed inset-0 bg-black/50 hidden flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-2xl max-w-3xl w-full p-6 shadow-xl max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-4 border-b pb-3">
+                <h3 id="modal-cat-titre" class="text-lg font-bold text-slate-900">Gérer les catégories</h3>
+                <button onclick="fermerModalCategories()" class="text-slate-400 hover:text-slate-600 text-xl font-bold">&times;</button>
+            </div>
+
+            <!-- Formulaire de création / édition d'une catégorie -->
+            <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 mb-6 space-y-4">
+                <h4 class="text-sm font-semibold text-slate-700">Ajouter ou modifier une catégorie</h4>
+                <input type="hidden" id="edit-cat-ancien-nom" value="">
+                
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Nom de la catégorie</label>
+                    <input type="text" id="input-nom-cat" placeholder="Ex: Attention, Raisonnement, Spatial..." class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Sélectionner les exercices (parmi ceux du groupe)</label>
+                    <div id="liste-checkboxes-exercices-groupe" class="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto p-2 bg-white rounded-lg border border-slate-200">
+                        <!-- Cases à cocher injectées par JS -->
+                    </div>
+                </div>
+
+                <div class="flex justify-end gap-2 pt-2">
+                    <button onclick="annulerEditionCategorie()" class="bg-slate-200 text-slate-700 px-4 py-2 rounded-lg text-xs font-medium hover:bg-slate-300">Annuler</button>
+                    <button onclick="validerEnregistrementCategorie()" class="bg-indigo-600 text-white px-5 py-2 rounded-lg text-xs font-bold hover:bg-indigo-700 shadow-sm">Enregistrer la catégorie</button>
+                </div>
+            </div>
+
+            <!-- Liste des catégories existantes pour ce groupe avec bouton engrenage ⚙️ -->
+            <div>
+                <h4 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">Catégories actuelles de ce groupe</h4>
+                <div id="liste-categories-existantes" class="space-y-3 max-h-60 overflow-y-auto">
+                    <!-- Injecté par JS -->
+                </div>
+            </div>
+
+            <div class="mt-6 text-right">
+                <button onclick="fermerModalCategories()" class="bg-slate-800 text-white px-5 py-2 rounded-xl text-sm font-medium hover:bg-slate-900">Fermer</button>
             </div>
         </div>
     </div>
