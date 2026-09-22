@@ -56,23 +56,15 @@ let statsGlobales = {};
 let groupesPersonnalisés = {}; 
 let groupeActif = "Tous";
 let evolutionChart = null;
+let barChart = null;
+let exerciceActuelDrawer = null;
 
-// --- 3. CHARGEMENT DEPUIS LE CLOUD (SANS GROUPES PRÉ-CRÉÉS) ---
+// --- 2. CHARGEMENT DEPUIS LE CLOUD ---
 async function chargerDonnees() {
     tousLesExercices.forEach(ex => statsGlobales[ex] = { scores: [], dates: [] });
 
-    console.log("Tentative de connexion à Supabase...");
-
-    // A. Récupération des scores
     const { data: scoresData, error: scoresError } = await supabaseClient.from('scores').select('*').order('id', { ascending: true });
-    
-    if (scoresError) {
-        console.error("Erreur critique (Scores) :", scoresError);
-        alert(`❌ Erreur de connexion Supabase (Scores) : ${scoresError.message}`);
-        return;
-    }
-
-    if (scoresData) {
+    if (!scoresError && scoresData) {
         scoresData.forEach(row => {
             if (statsGlobales[row.exercice]) {
                 statsGlobales[row.exercice].scores.push(row.score_stanine);
@@ -81,46 +73,35 @@ async function chargerDonnees() {
         });
     }
 
-    // B. Récupération des groupes (Vierge si aucun groupe n'a été créé)
     const { data: groupesData, error: groupesError } = await supabaseClient.from('groupes').select('*');
-    
-    if (groupesError) {
-        console.error("Erreur critique (Groupes) :", groupesError);
-        alert(`❌ Erreur de connexion Supabase (Groupes) : ${groupesError.message}`);
-        return;
-    }
-
     groupesPersonnalisés = {};
-    if (groupesData && groupesData.length > 0) {
+    if (!groupesError && groupesData) {
         groupesData.forEach(g => groupesPersonnalisés[g.nom] = g.exercices);
     }
 }
 
-// --- 4. SAUVEGARDE DANS LE CLOUD ---
+// --- 3. SAUVEGARDE ---
 async function enregistrerScore(scoreStanine) {
     const exerciceSelectionne = document.getElementById('select-exercice').value;
     if (!exerciceSelectionne) return;
 
-    const dateJour = new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' });
+    const dateJour = new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: '2-digit' });
 
     statsGlobales[exerciceSelectionne].scores.push(scoreStanine);
     statsGlobales[exerciceSelectionne].dates.push(dateJour);
     
-    const { error } = await supabaseClient.from('scores').insert([
+    await supabaseClient.from('scores').insert([
         { date_test: dateJour, exercice: exerciceSelectionne, score_stanine: scoreStanine }
     ]);
 
-    if (error) {
-        console.error("Erreur d'insertion :", error);
-        alert(`❌ Impossible de sauvegarder dans le Cloud : ${error.message}`);
-    } else {
-        const message = document.getElementById('message-confirmation');
-        message.classList.remove('hidden');
-        setTimeout(() => message.classList.add('hidden'), 3000);
-    }
+    const message = document.getElementById('message-confirmation');
+    message.classList.remove('hidden');
+    setTimeout(() => message.classList.add('hidden'), 3000);
 
     genererBandeaux();
-    afficherGraphique(exerciceSelectionne);
+    if (exerciceActuelDrawer === exerciceSelectionne) {
+        ouvrirDrawer(exerciceSelectionne); // Rafraîchir le tiroir si ouvert
+    }
 }
 
 async function sauvegarderGroupesDansCloud() {
@@ -128,14 +109,8 @@ async function sauvegarderGroupesDansCloud() {
         nom: nom,
         exercices: groupesPersonnalisés[nom]
     }));
-    
-    // Si aucun groupe n'existe, on envoie un tableau vide ou on nettoie
     if (formattedGroups.length > 0) {
-        const { error } = await supabaseClient.from('groupes').upsert(formattedGroups);
-        if (error) {
-            console.error("Erreur de sauvegarde des groupes :", error);
-            alert(`❌ Erreur de sauvegarde des groupes : ${error.message}`);
-        }
+        await supabaseClient.from('groupes').upsert(formattedGroups);
     }
 }
 
@@ -144,13 +119,13 @@ async function supprimerGroupeDansCloud(nomGroupe) {
 }
 
 const getPointColor = (val) => {
-    if (val <= 2) return '#ef4444';
-    if (val <= 4) return '#f59e0b';
-    if (val <= 7) return '#10b981';
-    return '#3b82f6';
+    if (val <= 2) return '#ef4444'; // Rouge
+    if (val <= 4) return '#f59e0b'; // Orange
+    if (val <= 7) return '#10b981'; // Vert
+    return '#3b82f6'; // Bleu
 };
 
-// --- 5. LOGIQUE D'INTERFACE ---
+// --- 4. INTERFACE PRINCIPALE ---
 function afficherNavigationGroupes() {
     const navContainer = document.getElementById('groupes-nav');
     if (!navContainer) return;
@@ -239,7 +214,7 @@ function genererBandeaux() {
     }
 
     if (exercicesAffiches.length === 0) {
-        container.innerHTML = `<div class="p-6 text-center text-slate-400 text-sm">Aucun exercice dans ce groupe pour le moment. Cliquez sur "Créer / Modifier les groupes" pour en ajouter.</div>`;
+        container.innerHTML = `<div class="p-6 text-center text-slate-400 text-sm">Aucun exercice dans ce groupe pour le moment.</div>`;
         return;
     }
 
@@ -259,19 +234,31 @@ function genererBandeaux() {
         const textMoyenne = moyenne !== '-' ? '#ffffff' : '#94a3b8';
         const textDernier = dernier !== '-' ? getPointColor(dernier) : '#94a3b8';
 
+        // Génération des 9 petits carrés de niveau sur le bandeau
+        let htmlCarres = '';
+        for (let i = 1; i <= 9; i++) {
+            const atteint = donnees.scores.includes(i);
+            const couleur = atteint ? getPointColor(i) : '#f1f5f9';
+            const textColor = atteint ? '#ffffff' : '#cbd5e1';
+            htmlCarres += `<div class="w-6 h-6 rounded flex items-center justify-center text-xs font-bold" style="background-color: ${couleur}; color: ${textColor}">${i}</div>`;
+        }
+
         const html = `
-            <div onclick="afficherGraphique('${ex}')" class="grid grid-cols-12 gap-4 p-4 items-center border-l-4 border-transparent hover:border-blue-500 hover:bg-slate-50 transition-colors cursor-pointer border-b border-slate-100">
-                <div class="col-span-8 flex items-center gap-3">
+            <div onclick="ouvrirDrawer('${ex}')" class="grid grid-cols-12 gap-4 p-4 items-center border-l-4 border-transparent hover:border-blue-500 hover:bg-slate-50 transition-colors cursor-pointer border-b border-slate-100">
+                <div class="col-span-5 flex items-center gap-3">
                     <span class="bg-indigo-100 text-indigo-600 text-xs font-bold px-2 py-1 rounded">PT</span>
                     <div>
                         <div class="font-semibold text-slate-800">${ex}</div>
-                        <div class="text-xs text-slate-500">${nbEssais > 0 ? nbEssais + ' essai(s)' : 'Aucun essai'}</div>
+                        <div class="text-xs text-slate-500">${nbEssais > 0 ? nbEssais + ' essais • dernier il y a peu' : 'Aucun essai'}</div>
                     </div>
                 </div>
-                <div class="col-span-2 flex justify-center">
+                <div class="col-span-5 flex items-center justify-center gap-1">
+                    ${htmlCarres}
+                </div>
+                <div class="col-span-1 flex justify-center">
                     <div class="w-8 h-8 rounded flex items-center justify-center font-bold shadow-sm" style="background-color: ${bgMoyenne}; color: ${textMoyenne}">${moyenne}</div>
                 </div>
-                <div class="col-span-2 flex justify-center">
+                <div class="col-span-1 flex justify-center">
                     <div class="w-8 h-8 flex items-center justify-center font-bold text-lg" style="color: ${textDernier}">${dernier}</div>
                 </div>
             </div>
@@ -280,18 +267,85 @@ function genererBandeaux() {
     });
 }
 
-window.afficherGraphique = function(nomExercice) {
-    const titre = document.getElementById('titre-graphique');
-    if(titre) titre.innerText = `ÉVOLUTION - ${nomExercice.toUpperCase()}`;
-    
-    const donnees = statsGlobales[nomExercice] || { scores: [], dates: [] };
-    const canvas = document.getElementById('evolutionChart');
-    if(!canvas) return;
-    const ctx = canvas.getContext('2d');
+// --- 5. GESTION DU PANNEAU LATÉRAL (DRAWER & GRAPHIQUES) ---
+window.ouvrirDrawer = function(nomExercice) {
+    exerciceActuelDrawer = nomExercice;
+    document.getElementById('drawer-titre-exercice').textContent = nomExercice;
+    document.getElementById('drawer-detail').classList.remove('hidden');
 
-    if (evolutionChart != null) {
-        evolutionChart.destroy();
+    const donnees = statsGlobales[nomExercice] || { scores: [], dates: [] };
+    const nbEssais = donnees.scores.length;
+
+    let moyenne = '-';
+    let dernier = '-';
+    let record = '-';
+
+    if (nbEssais > 0) {
+        const somme = donnees.scores.reduce((a, b) => a + b, 0);
+        moyenne = Math.round(somme / nbEssais);
+        dernier = donnees.scores[nbEssais - 1];
+        record = Math.max(...donnees.scores);
     }
+
+    // Affichage des blocs stats avec couleurs
+    const boxMoy = document.getElementById('drawer-stat-moyenne');
+    boxMoy.textContent = moyenne;
+    boxMoy.style.color = moyenne !== '-' ? getPointColor(moyenne) : '#64748b';
+
+    const boxDer = document.getElementById('drawer-stat-dernier');
+    boxDer.textContent = dernier;
+    boxDer.style.color = dernier !== '-' ? getPointColor(dernier) : '#64748b';
+
+    const boxRec = document.getElementById('drawer-stat-record');
+    boxRec.textContent = record;
+    boxRec.style.color = record !== '-' ? getPointColor(record) : '#64748b';
+
+    // Rendu des graphiques
+    rendreGraphiqueBarres(donnees.scores);
+    rendreGraphiqueLigne(donnees);
+    rendreListeEssais(donnees);
+}
+
+window.fermerDrawer = function() {
+    document.getElementById('drawer-detail').classList.add('hidden');
+}
+
+// Graphique en barres (Répartition des scores 1 à 9)
+function rendreGraphiqueBarres(scores) {
+    const counts = Array(9).fill(0);
+    scores.forEach(s => {
+        if (s >= 1 && s <= 9) counts[s - 1]++;
+    });
+
+    const ctx = document.getElementById('barChart').getContext('2d');
+    if (barChart != null) barChart.destroy();
+
+    barChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: ['1', '2', '3', '4', '5', '6', '7', '8', '9'],
+            datasets: [{
+                data: counts,
+                backgroundColor: [1,2,3,4,5,6,7,8,9].map(i => getPointColor(i)),
+                borderRadius: 4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: { beginAtZero: true, ticks: { stepSize: 1, font: { size: 10 } }, grid: { color: '#f1f5f9' } },
+                x: { grid: { display: false }, ticks: { font: { weight: 'bold' } } }
+            },
+            plugins: { legend: { display: false } }
+        }
+    });
+}
+
+// Graphique en ligne (Évolution)
+function rendreGraphiqueLigne(donnees) {
+    const ctx = document.getElementById('evolutionChart').getContext('2d');
+    if (evolutionChart != null) evolutionChart.destroy();
 
     evolutionChart = new Chart(ctx, {
         type: 'line',
@@ -306,52 +360,68 @@ window.afficherGraphique = function(nomExercice) {
                 pointBackgroundColor: context => getPointColor(context.raw),
                 pointBorderColor: '#ffffff',
                 pointBorderWidth: 1.5,
-                pointRadius: 6,
-                pointHoverRadius: 8
+                pointRadius: 5,
+                pointHoverRadius: 7
             }]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            layout: { padding: { top: 10, bottom: 10 } },
             scales: {
-                y: { min: 1, max: 9, ticks: { stepSize: 1, color: '#3b82f6', font: { weight: 'bold' } }, grid: { color: '#f1f5f9' } },
-                x: { ticks: { maxTicksLimit: 15 }, grid: { display: false } }
+                y: { min: 1, max: 9, ticks: { stepSize: 1, font: { weight: 'bold' } }, grid: { color: '#f1f5f9' } },
+                x: { ticks: { maxTicksLimit: 10, font: { size: 10 } }, grid: { display: false } }
             },
             plugins: { legend: { display: false } }
         }
     });
 }
 
-// --- 6. MODALE ET GESTION DES GROUPES ---
+// Liste textuelle des essais dans le tiroir
+function rendreListeEssais(donnees) {
+    const container = document.getElementById('drawer-liste-essais');
+    container.innerHTML = '';
+
+    if (donnees.scores.length === 0) {
+        container.innerHTML = `<p class="text-xs text-slate-400 text-center py-4">Aucun essai enregistré pour cet exercice.</p>`;
+        return;
+    }
+
+    // Afficher du plus récent au plus ancien
+    for (let i = donnees.scores.length - 1; i >= 0; i--) {
+        const score = donnees.scores[i];
+        const date = donnees.dates[i];
+        const couleur = getPointColor(score);
+
+        container.innerHTML += `
+            <div class="flex justify-between items-center bg-slate-50 border border-slate-100 p-2.5 rounded-lg text-xs">
+                <span class="text-slate-500 font-medium">Essai du ${date}</span>
+                <span class="font-bold px-2 py-0.5 rounded text-white" style="background-color: ${couleur}">Stanine ${score}</span>
+            </div>
+        `;
+    }
+}
+
+// --- 6. MODALE DE GESTION DES GROUPES ---
 window.ouvrirModalGroupes = function() {
     document.getElementById('modal-groupes').classList.remove('hidden');
     rendreInterfaceGestionGroupes();
 }
-
 window.fermerModalGroupes = function() {
     document.getElementById('modal-groupes').classList.add('hidden');
     afficherNavigationGroupes();
     initialiserFormulaireSelect();
     genererBandeaux();
 }
-
 window.creerGroupe = async function() {
     const input = document.getElementById('input-nom-groupe');
     const nom = input.value.trim();
     if (!nom) return;
-
-    if (groupesPersonnalisés[nom]) {
-        alert("Ce groupe existe déjà !");
-        return;
-    }
-
+    if (groupesPersonnalisés[nom]) { alert("Ce groupe existe déjà !"); return; }
     groupesPersonnalisés[nom] = [];
     await sauvegarderGroupesDansCloud();
     input.value = '';
     rendreInterfaceGestionGroupes();
 }
-
 window.supprimerGroupe = async function(nomGroupe) {
     if (confirm(`Voulez-vous vraiment supprimer le groupe "${nomGroupe}" ?`)) {
         delete groupesPersonnalisés[nomGroupe];
@@ -360,16 +430,11 @@ window.supprimerGroupe = async function(nomGroupe) {
         rendreInterfaceGestionGroupes();
     }
 }
-
 window.basculerExerciceDansGroupe = async function(nomGroupe, nomExercice) {
     if (!groupesPersonnalisés[nomGroupe]) return;
     const index = groupesPersonnalisés[nomGroupe].indexOf(nomExercice);
-    
-    if (index > -1) {
-        groupesPersonnalisés[nomGroupe].splice(index, 1);
-    } else {
-        groupesPersonnalisés[nomGroupe].push(nomExercice);
-    }
+    if (index > -1) groupesPersonnalisés[nomGroupe].splice(index, 1);
+    else groupesPersonnalisés[nomGroupe].push(nomExercice);
     await sauvegarderGroupesDansCloud();
     rendreInterfaceGestionGroupes();
 }
@@ -378,13 +443,11 @@ function rendreInterfaceGestionGroupes() {
     const container = document.getElementById('liste-gestion-groupes');
     if(!container) return;
     container.innerHTML = '';
-
     const clesGroupes = Object.keys(groupesPersonnalisés);
     if (clesGroupes.length === 0) {
-        container.innerHTML = `<p class="text-sm text-slate-400 text-center py-4">Aucun groupe personnalisé pour l'instant. Créez-en un ci-dessus !</p>`;
+        container.innerHTML = `<p class="text-sm text-slate-400 text-center py-4">Aucun groupe personnalisé pour l'instant.</p>`;
         return;
     }
-
     clesGroupes.forEach(nomGroupe => {
         const exercicesDuGroupe = groupesPersonnalisés[nomGroupe];
         let htmlExercices = '';
@@ -397,12 +460,11 @@ function rendreInterfaceGestionGroupes() {
                 </label>
             `;
         });
-
         container.innerHTML += `
             <div class="border border-slate-200 rounded-xl p-4 bg-slate-50">
                 <div class="flex justify-between items-center mb-3">
                     <h5 class="font-bold text-sm text-slate-800">📁 ${nomGroupe} (${exercicesDuGroupe.length} tests)</h5>
-                    <button onclick="supprimerGroupe('${nomGroupe}')" class="text-xs text-red-500 hover:text-red-700 font-medium">Supprimer le groupe</button>
+                    <button onclick="supprimerGroupe('${nomGroupe}')" class="text-xs text-red-500 hover:text-red-700 font-medium">Supprimer</button>
                 </div>
                 <div class="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto p-1 bg-slate-100 rounded-lg">
                     ${htmlExercices}
@@ -412,15 +474,11 @@ function rendreInterfaceGestionGroupes() {
     });
 }
 
-// --- DÉMARRAGE DE LA NAVIGATION ---
+// --- DÉMARRAGE ---
 async function demarrerDashboard() {
     await chargerDonnees();
     afficherNavigationGroupes();
     initFormulaire();
     genererBandeaux();
-    if (tousLesExercices.length > 0) {
-        afficherGraphique(tousLesExercices[0]);
-    }
 }
-
 demarrerDashboard();
