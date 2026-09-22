@@ -1,4 +1,9 @@
-// --- 1. LISTE DE TOUS LES EXERCICES ---
+// --- 1. CONNEXION SUPABASE ---
+const SUPABASE_URL = 'https://bansqfbzsdjovlaewrvx.supabase.co/rest/v1/';
+const SUPABASE_ANON_KEY = 'sb_publishable_-r-98cutZLtigCMEhfILOQ_uXX1byh0';
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// --- 2. LISTE DE TOUS LES EXERCICES ---
 const tousLesExercices = [
     "Airways", "Ami ou ennemi", "Anglais", "Angles",
     "Angles à cocher", "Angles à saisir", "Attention 1", "Attention 2", 
@@ -10,40 +15,79 @@ const tousLesExercices = [
     "Test des compteurs", "Voiture séquentiel"
 ];
 
-// --- 2. GESTION DE LA MÉMOIRE LOCALE ---
+// Variables Globales
 let statsGlobales = {};
 let groupesPersonnalisés = {}; 
 let groupeActif = "Tous";
 let evolutionChart = null;
 
-function chargerDonnees() {
-    // 1. Charger les scores
-    const scoresSave = localStorage.getItem('cadets_scores');
-    if (scoresSave) statsGlobales = JSON.parse(scoresSave);
+// --- 3. CHARGEMENT DEPUIS LE CLOUD ---
+async function chargerDonnees() {
+    // Initialisation des structures vides
+    tousLesExercices.forEach(ex => statsGlobales[ex] = { scores: [], dates: [] });
 
-    tousLesExercices.forEach(ex => {
-        if (!statsGlobales[ex]) statsGlobales[ex] = { scores: [], dates: [] };
-    });
+    // A. Récupération des scores
+    const { data: scoresData, error: scoresError } = await supabaseClient.from('scores').select('*').order('id', { ascending: true });
+    if (!scoresError && scoresData) {
+        scoresData.forEach(row => {
+            if (statsGlobales[row.exercice]) {
+                statsGlobales[row.exercice].scores.push(row.score_stanine);
+                statsGlobales[row.exercice].dates.push(row.date_test);
+            }
+        });
+    }
 
-    // 2. Charger les groupes
-    const groupesSave = localStorage.getItem('cadets_groupes');
-    if (groupesSave) {
-        groupesPersonnalisés = JSON.parse(groupesSave);
+    // B. Récupération des groupes
+    const { data: groupesData, error: groupesError } = await supabaseClient.from('groupes').select('*');
+    if (!groupesError && groupesData && groupesData.length > 0) {
+        groupesPersonnalisés = {};
+        groupesData.forEach(g => groupesPersonnalisés[g.nom] = g.exercices);
     } else {
+        // Groupes par défaut si la base est vide
         groupesPersonnalisés = {
             "PSY0": ["Calcul mental 1", "Calcul mental 2", "Calcul mental 3", "Calcul mental 4", "Mathématiques"],
             "PSY1": ["Airways", "Angles", "Attention 1", "Patrons de cubes - PSY1"]
         };
-        sauvegarderGroupes();
+        await sauvegarderGroupesDansCloud();
     }
 }
 
-function sauvegarderScores() {
-    localStorage.setItem('cadets_scores', JSON.stringify(statsGlobales));
+// --- 4. SAUVEGARDE DANS LE CLOUD ---
+async function enregistrerScore(scoreStanine) {
+    const exerciceSelectionne = document.getElementById('select-exercice').value;
+    if (!exerciceSelectionne) return;
+
+    const dateJour = new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' });
+
+    // Mise à jour de l'affichage local immédiatement pour la fluidité
+    statsGlobales[exerciceSelectionne].scores.push(scoreStanine);
+    statsGlobales[exerciceSelectionne].dates.push(dateJour);
+    
+    // Envoi silencieux vers Supabase
+    await supabaseClient.from('scores').insert([
+        { date_test: dateJour, exercice: exerciceSelectionne, score_stanine: scoreStanine }
+    ]);
+
+    const message = document.getElementById('message-confirmation');
+    message.classList.remove('hidden');
+    setTimeout(() => message.classList.add('hidden'), 3000);
+
+    genererBandeaux();
+    afficherGraphique(exerciceSelectionne);
 }
 
-function sauvegarderGroupes() {
-    localStorage.setItem('cadets_groupes', JSON.stringify(groupesPersonnalisés));
+async function sauvegarderGroupesDansCloud() {
+    const formattedGroups = Object.keys(groupesPersonnalisés).map(nom => ({
+        nom: nom,
+        exercices: groupesPersonnalisés[nom]
+    }));
+    if (formattedGroups.length > 0) {
+        await supabaseClient.from('groupes').upsert(formattedGroups);
+    }
+}
+
+async function supprimerGroupeDansCloud(nomGroupe) {
+    await supabaseClient.from('groupes').delete().eq('nom', nomGroupe);
 }
 
 const getPointColor = (val) => {
@@ -53,9 +97,10 @@ const getPointColor = (val) => {
     return '#3b82f6';
 };
 
-// --- 3. RENDU DES BOUTONS DE NAVIGATION DES GROUPES ---
+// --- 5. LOGIQUE D'INTERFACE ---
 function afficherNavigationGroupes() {
     const navContainer = document.getElementById('groupes-nav');
+    if (!navContainer) return;
     navContainer.innerHTML = '';
 
     const btnTous = document.createElement('button');
@@ -72,7 +117,8 @@ function afficherNavigationGroupes() {
         navContainer.appendChild(btn);
     });
 
-    document.getElementById('label-groupe-actif').textContent = `Groupe : ${groupeActif}`;
+    const labelActif = document.getElementById('label-groupe-actif');
+    if(labelActif) labelActif.textContent = `Groupe : ${groupeActif}`;
 }
 
 function changerGroupe(nomGroupe) {
@@ -82,9 +128,11 @@ function changerGroupe(nomGroupe) {
     genererBandeaux();
 }
 
-// --- 4. FORMULAIRE D'AJOUT DE TEST (Filtré par groupe) ---
 function initFormulaire() {
     const zoneBoutons = document.getElementById('zone-boutons-stanine');
+    if(!zoneBoutons) return;
+    zoneBoutons.innerHTML = '<span class="text-sm text-slate-500 font-medium mr-2 flex items-center">Score :</span>';
+    
     for (let i = 1; i <= 9; i++) {
         const btn = document.createElement('button');
         btn.textContent = i;
@@ -108,6 +156,7 @@ function initFormulaire() {
 
 function initialiserFormulaireSelect() {
     const select = document.getElementById('select-exercice');
+    if(!select) return;
     select.innerHTML = '<option value="">-- Sélectionner un test --</option>';
 
     let exercicesDisponibles = tousLesExercices;
@@ -122,30 +171,13 @@ function initialiserFormulaireSelect() {
         select.appendChild(option);
     });
 
-    document.getElementById('zone-boutons-stanine').classList.add('opacity-30', 'pointer-events-none');
+    const zoneBoutons = document.getElementById('zone-boutons-stanine');
+    if(zoneBoutons) zoneBoutons.classList.add('opacity-30', 'pointer-events-none');
 }
 
-function enregistrerScore(scoreStanine) {
-    const exerciceSelectionne = document.getElementById('select-exercice').value;
-    if (!exerciceSelectionne) return;
-
-    const dateJour = new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' });
-
-    statsGlobales[exerciceSelectionne].scores.push(scoreStanine);
-    statsGlobales[exerciceSelectionne].dates.push(dateJour);
-    sauvegarderScores();
-
-    const message = document.getElementById('message-confirmation');
-    message.classList.remove('hidden');
-    setTimeout(() => message.classList.add('hidden'), 3000);
-
-    genererBandeaux();
-    afficherGraphique(exerciceSelectionne);
-}
-
-// --- 5. GÉNÉRATION DES BANDEAUX (Filtrés par groupe) ---
 function genererBandeaux() {
     const container = document.getElementById('exercices-list');
+    if(!container) return;
     container.innerHTML = '';
 
     let exercicesAffiches = tousLesExercices;
@@ -154,7 +186,7 @@ function genererBandeaux() {
     }
 
     if (exercicesAffiches.length === 0) {
-        container.innerHTML = `<div class="p-6 text-center text-slate-400 text-sm">Aucun exercice dans ce groupe pour le moment. Cliquez sur "Créer / Modifier les groupes" pour en ajouter.</div>`;
+        container.innerHTML = `<div class="p-6 text-center text-slate-400 text-sm">Aucun exercice dans ce groupe pour le moment.</div>`;
         return;
     }
 
@@ -195,11 +227,14 @@ function genererBandeaux() {
     });
 }
 
-// --- 6. GESTION DU GRAPHIQUE ---
 window.afficherGraphique = function(nomExercice) {
-    document.getElementById('titre-graphique').innerText = `ÉVOLUTION - ${nomExercice.toUpperCase()}`;
+    const titre = document.getElementById('titre-graphique');
+    if(titre) titre.innerText = `ÉVOLUTION - ${nomExercice.toUpperCase()}`;
+    
     const donnees = statsGlobales[nomExercice] || { scores: [], dates: [] };
-    const ctx = document.getElementById('evolutionChart').getContext('2d');
+    const canvas = document.getElementById('evolutionChart');
+    if(!canvas) return;
+    const ctx = canvas.getContext('2d');
 
     if (evolutionChart != null) {
         evolutionChart.destroy();
@@ -235,7 +270,7 @@ window.afficherGraphique = function(nomExercice) {
     });
 }
 
-// --- 7. MODALE DE GESTION DES GROUPES ---
+// --- 6. MODALE ET GESTION DES GROUPES ---
 window.ouvrirModalGroupes = function() {
     document.getElementById('modal-groupes').classList.remove('hidden');
     rendreInterfaceGestionGroupes();
@@ -248,7 +283,7 @@ window.fermerModalGroupes = function() {
     genererBandeaux();
 }
 
-window.creerGroupe = function() {
+window.creerGroupe = async function() {
     const input = document.getElementById('input-nom-groupe');
     const nom = input.value.trim();
     if (!nom) return;
@@ -259,21 +294,21 @@ window.creerGroupe = function() {
     }
 
     groupesPersonnalisés[nom] = [];
-    sauvegarderGroupes();
+    await sauvegarderGroupesDansCloud();
     input.value = '';
     rendreInterfaceGestionGroupes();
 }
 
-window.supprimerGroupe = function(nomGroupe) {
+window.supprimerGroupe = async function(nomGroupe) {
     if (confirm(`Voulez-vous vraiment supprimer le groupe "${nomGroupe}" ?`)) {
         delete groupesPersonnalisés[nomGroupe];
         if (groupeActif === nomGroupe) groupeActif = "Tous";
-        sauvegarderGroupes();
+        await supprimerGroupeDansCloud(nomGroupe);
         rendreInterfaceGestionGroupes();
     }
 }
 
-window.basculerExerciceDansGroupe = function(nomGroupe, nomExercice) {
+window.basculerExerciceDansGroupe = async function(nomGroupe, nomExercice) {
     if (!groupesPersonnalisés[nomGroupe]) return;
     const index = groupesPersonnalisés[nomGroupe].indexOf(nomExercice);
     
@@ -282,12 +317,13 @@ window.basculerExerciceDansGroupe = function(nomGroupe, nomExercice) {
     } else {
         groupesPersonnalisés[nomGroupe].push(nomExercice);
     }
-    sauvegarderGroupes();
+    await sauvegarderGroupesDansCloud();
     rendreInterfaceGestionGroupes();
 }
 
 function rendreInterfaceGestionGroupes() {
     const container = document.getElementById('liste-gestion-groupes');
+    if(!container) return;
     container.innerHTML = '';
 
     const clesGroupes = Object.keys(groupesPersonnalisés);
@@ -298,7 +334,6 @@ function rendreInterfaceGestionGroupes() {
 
     clesGroupes.forEach(nomGroupe => {
         const exercicesDuGroupe = groupesPersonnalisés[nomGroupe];
-
         let htmlExercices = '';
         tousLesExercices.forEach(ex => {
             const estInclus = exercicesDuGroupe.includes(ex);
@@ -310,7 +345,7 @@ function rendreInterfaceGestionGroupes() {
             `;
         });
 
-        const bloc = `
+        container.innerHTML += `
             <div class="border border-slate-200 rounded-xl p-4 bg-slate-50">
                 <div class="flex justify-between items-center mb-3">
                     <h5 class="font-bold text-sm text-slate-800">📁 ${nomGroupe} (${exercicesDuGroupe.length} tests)</h5>
@@ -321,15 +356,18 @@ function rendreInterfaceGestionGroupes() {
                 </div>
             </div>
         `;
-        container.innerHTML += bloc;
     });
 }
 
 // --- DÉMARRAGE DE L'APPLICATION ---
-chargerDonnees();
-afficherNavigationGroupes();
-initFormulaire();
-genererBandeaux();
-if (tousLesExercices.length > 0) {
-    afficherGraphique(tousLesExercices[0]);
+async function demarrerDashboard() {
+    await chargerDonnees();
+    afficherNavigationGroupes();
+    initFormulaire();
+    genererBandeaux();
+    if (tousLesExercices.length > 0) {
+        afficherGraphique(tousLesExercices[0]);
+    }
 }
+
+demarrerDashboard();
