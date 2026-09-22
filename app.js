@@ -123,11 +123,25 @@ async function supprimerGroupeDansCloud(nomGroupe) {
     await supabaseClient.from('groupes').delete().eq('nom', nomGroupe);
 }
 
+// Palette de couleurs officielle exacte des classes Stanine
+const getColorForClass = (num) => {
+    const colors = {
+        1: '#E30613',
+        2: '#E84E0F',
+        3: '#F18700',
+        4: '#FBBA00',
+        5: '#FFED00',
+        6: '#D3D800',
+        7: '#02B74B',
+        8: '#009ED4',
+        9: '#003366'
+    };
+    const rounded = Math.min(9, Math.max(1, Math.round(num)));
+    return colors[rounded] || '#003366';
+};
+
 const getPointColor = (val) => {
-    if (val <= 2) return '#ef4444';
-    if (val <= 4) return '#f59e0b';
-    if (val <= 7) return '#10b981';
-    return '#3b82f6';
+    return getColorForClass(val);
 };
 
 // --- 5. INTERFACE & NAVIGATION ---
@@ -187,7 +201,7 @@ function initFormulaire() {
         const btn = document.createElement('button');
         btn.textContent = i;
         btn.className = "w-8 h-8 rounded text-white font-bold text-xs transition-transform hover:scale-110 active:scale-95 shadow-sm";
-        btn.style.backgroundColor = getPointColor(i);
+        btn.style.backgroundColor = getColorForClass(i);
         btn.onclick = () => enregistrerScore(i);
         zoneBoutons.appendChild(btn);
     }
@@ -331,9 +345,9 @@ function rendreLigneExerciceCompacte(ex) {
         dernier = donnees.scores[nbEssais - 1];
     }
 
-    const bgMoyenne = moyenne !== '-' ? getPointColor(moyenne) : '#f1f5f9';
+    const bgMoyenne = moyenne !== '-' ? getColorForClass(moyenne) : '#f1f5f9';
     const textMoyenne = moyenne !== '-' ? '#ffffff' : '#94a3b8';
-    const textDernier = dernier !== '-' ? getPointColor(dernier) : '#94a3b8';
+    const textDernier = dernier !== '-' ? getColorForClass(dernier) : '#94a3b8';
 
     const scoresRecents = donnees.scores.slice(-20);
     let html20Derniers = '';
@@ -342,7 +356,7 @@ function rendreLigneExerciceCompacte(ex) {
         html20Derniers = `<span class="text-[10px] text-slate-400 italic">Aucun essai</span>`;
     } else {
         scoresRecents.forEach(score => {
-            const couleur = getPointColor(score);
+            const couleur = getColorForClass(score);
             html20Derniers += `<div class="w-5 h-5 rounded flex items-center justify-center text-[10px] font-bold text-white shadow-2xs" style="background-color: ${couleur}">${score}</div>`;
         });
     }
@@ -374,12 +388,10 @@ function genererSyntheseDroite() {
     if (!containerBarres) return;
     containerBarres.innerHTML = '';
 
-    // Déterminer les catégories et exercices à analyser
     let nomsCats = [];
     let sousCatsMap = {};
 
     if (groupeActif === "Tous") {
-        // En mode "Tous", on prend tous les exercices globaux comme une seule catégorie ou pas de sous-catégories
         nomsCats = ["Tous les tests"];
         sousCatsMap = { "Tous les tests": tousLesExercices };
     } else {
@@ -393,7 +405,6 @@ function genererSyntheseDroite() {
     let sommeTotaleMoyennes = 0;
     let nbCatsValides = 0;
 
-    // Calculer la moyenne de chaque catégorie (moyenne des moyennes des exercices de la catégorie)
     nomsCats.forEach(nomCat => {
         const exList = sousCatsMap[nomCat] || [];
         let sommeMoyennesEx = 0;
@@ -418,15 +429,14 @@ function genererSyntheseDroite() {
         }
     });
 
-    // Moyenne générale (moyenne des moyennes de chaque catégorie)
     const moyenneGenerale = nbCatsValides > 0 ? (sommeTotaleMoyennes / nbCatsValides) : null;
 
-    // 1. Afficher la barre de moyenne générale en haut
+    // 1. Barre de moyenne générale en haut
     containerBarres.innerHTML += `
-        <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+        <div class="bg-slate-50 p-3 rounded-xl border border-slate-200">
             <div class="flex justify-between items-center mb-1.5 text-xs font-bold text-slate-700">
-                <span>Moyenne générale</span>
-                <span class="text-sm font-extrabold" style="color: ${moyenneGenerale !== null ? getPointColor(Math.round(moyenneGenerale)) : '#94a3b8'}">
+                <span>Moyenne</span>
+                <span class="text-sm font-extrabold" style="color: ${moyenneGenerale !== null ? getColorForClass(Math.floor(moyenneGenerale)) : '#94a3b8'}">
                     ${moyenneGenerale !== null ? moyenneGenerale.toFixed(1) : '—'}
                 </span>
             </div>
@@ -435,7 +445,7 @@ function genererSyntheseDroite() {
         <div class="border-t my-3"></div>
     `;
 
-    // 2. Afficher les barres pour chaque catégorie
+    // 2. Barres pour chaque catégorie
     if (nomsCats.length === 0) {
         containerBarres.innerHTML += `<p class="text-xs text-slate-400 text-center py-4">Aucune catégorie définie pour ce groupe.</p>`;
     } else {
@@ -445,7 +455,7 @@ function genererSyntheseDroite() {
                 <div class="py-1">
                     <div class="flex justify-between items-center mb-1 text-xs">
                         <span class="font-medium text-slate-600 truncate max-w-[75%]" title="${nomCat}">📁 ${nomCat}</span>
-                        <span class="font-bold text-xs" style="color: ${moyCat !== null ? getPointColor(Math.round(moyCat)) : '#94a3b8'}">
+                        <span class="font-bold text-xs" style="color: ${moyCat !== null ? getColorForClass(Math.floor(moyCat)) : '#94a3b8'}">
                             ${moyCat !== null ? moyCat.toFixed(1) : '—'}
                         </span>
                     </div>
@@ -455,29 +465,45 @@ function genererSyntheseDroite() {
         });
     }
 
-    // 3. Mettre à jour le graphique en araignée (Radar Chart)
+    // 3. Mise à jour du graphique Radar
     mettreAJourRadarChart(nomsCats, moyennesParCat);
 }
 
-// Fonction utilitaire pour générer les 9 cases de progression (style Pilotest)
+// Fonction pour générer la barre de progression arrondie avec la logique de la classe inférieure
 function genererHtmlBarreProgression(valeurMoyenne) {
-    let html = '<div class="grid grid-cols-9 gap-1">';
-    for (let i = 1; i <= 9; i++) {
-        let estRempli = valeurMoyenne !== null && i <= Math.round(valeurMoyenne);
-        let couleur = estRempli ? getPointColor(i) : '#f1f5f9';
-        let textColor = estRempli ? '#ffffff' : '#cbd5e1';
-        html += `<div class="h-3 rounded-xs flex items-center justify-center text-[8px] font-bold" style="background-color: ${couleur};"></div>`;
+    if (valeurMoyenne === null || isNaN(valeurMoyenne)) {
+        return `
+            <div class="h-4 w-full bg-slate-100 rounded-full relative overflow-hidden flex items-center">
+                <div class="w-full h-full flex justify-between px-1 absolute inset-0 pointer-events-none">
+                    ${Array(8).fill('<div class="w-[1px] h-full bg-white/60"></div>').join('')}
+                </div>
+            </div>
+        `;
     }
-    html += '</div>';
-    return html;
+    
+    // Calcul du pourcentage sur une échelle de 9
+    const pourcentage = Math.min(100, Math.max(0, (valeurMoyenne / 9) * 100));
+    // Utilisation de la classe inférieure (Math.floor) pour la couleur
+    const classeInferieure = Math.floor(valeurMoyenne) || 1;
+    const couleur = getColorForClass(classeInferieure);
+
+    return `
+        <div class="h-4 w-full bg-slate-100 rounded-full relative overflow-hidden flex items-center shadow-inner">
+            <div class="h-full rounded-full transition-all duration-500 absolute left-0 top-0" style="width: ${pourcentage}%; background-color: ${couleur};"></div>
+            <div class="w-full h-full flex justify-between px-1 absolute inset-0 pointer-events-none">
+                ${Array(8).fill('<div class="w-[1px] h-full bg-white/70"></div>').join('')}
+            </div>
+        </div>
+    `;
 }
 
-// Configuration et mise à jour du Radar Chart (Graphique en araignée)
+// Graphique en araignée (Radar) avec couleurs dynamiques sur les points
 function mettreAJourRadarChart(labels, moyennesMap) {
     const ctx = document.getElementById('radarChart').getContext('2d');
     if (radarChart != null) radarChart.destroy();
 
     const dataScores = labels.map(label => moyennesMap[label] !== null ? Number(moyennesMap[label].toFixed(1)) : 0);
+    const pointColors = dataScores.map(score => score > 0 ? getColorForClass(score) : '#cbd5e1');
 
     radarChart = new Chart(ctx, {
         type: 'radar',
@@ -486,11 +512,14 @@ function mettreAJourRadarChart(labels, moyennesMap) {
             datasets: [{
                 label: 'Moyenne Stanine',
                 data: dataScores,
-                backgroundColor: 'rgba(59, 130, 246, 0.2)',
-                borderColor: '#3b82f6',
+                backgroundColor: 'rgba(2, 183, 75, 0.12)',
+                borderColor: '#02B74B',
                 borderWidth: 2,
-                pointBackgroundColor: '#3b82f6',
-                pointRadius: 4
+                pointBackgroundColor: pointColors,
+                pointBorderColor: '#ffffff',
+                pointBorderWidth: 2,
+                pointRadius: 6,
+                pointHoverRadius: 8
             }]
         },
         options: {
@@ -511,7 +540,7 @@ function mettreAJourRadarChart(labels, moyennesMap) {
     });
 }
 
-// --- MODALES DE GESTION DES CATÉGORIES ET GROUPES (Inchangées) ---
+// --- MODALES DE GESTION DES CATÉGORIES ET GROUPES ---
 window.ouvrirModalCategories = function(nomCatEdit = null) {
     if (groupeActif === 'Tous') return;
     document.getElementById('modal-categories').classList.remove('hidden');
@@ -658,15 +687,15 @@ window.ouvrirDrawer = function(nomExercice) {
 
     const boxMoy = document.getElementById('drawer-stat-moyenne');
     boxMoy.textContent = moyenne;
-    boxMoy.style.color = moyenne !== '-' ? getPointColor(moyenne) : '#64748b';
+    boxMoy.style.color = moyenne !== '-' ? getColorForClass(moyenne) : '#64748b';
 
     const boxDer = document.getElementById('drawer-stat-dernier');
     boxDer.textContent = dernier;
-    boxDer.style.color = dernier !== '-' ? getPointColor(dernier) : '#64748b';
+    boxDer.style.color = dernier !== '-' ? getColorForClass(dernier) : '#64748b';
 
     const boxRec = document.getElementById('drawer-stat-record');
     boxRec.textContent = record;
-    boxRec.style.color = record !== '-' ? getPointColor(record) : '#64748b';
+    boxRec.style.color = record !== '-' ? getColorForClass(record) : '#64748b';
     document.getElementById('drawer-date-record').textContent = dateRecord ? `le ${dateRecord}` : 'meilleur score';
 
     rendreGraphiqueBarres(donnees.scores);
@@ -686,7 +715,7 @@ function rendreGraphiqueBarres(scores) {
         type: 'bar',
         data: {
             labels: ['1', '2', '3', '4', '5', '6', '7', '8', '9'],
-            datasets: [{ data: counts, backgroundColor: [1,2,3,4,5,6,7,8,9].map(i => getPointColor(i)), borderRadius: 6 }]
+            datasets: [{ data: counts, backgroundColor: [1,2,3,4,5,6,7,8,9].map(i => getColorForClass(i)), borderRadius: 6 }]
         },
         options: {
             responsive: true,
@@ -714,7 +743,7 @@ function rendreGraphiqueLigne(donnees) {
                 borderColor: '#3b82f6',
                 borderWidth: 2.5,
                 tension: 0.1,
-                pointBackgroundColor: context => getPointColor(context.raw),
+                pointBackgroundColor: context => getColorForClass(context.raw),
                 pointBorderColor: '#ffffff',
                 pointBorderWidth: 2,
                 pointRadius: 6,
@@ -744,7 +773,7 @@ function rendreListeEssais(donnees) {
         const score = donnees.scores[i];
         const date = donnees.dates[i];
         const idScore = donnees.ids[i];
-        const couleur = getPointColor(score);
+        const couleur = getColorForClass(score);
         container.innerHTML += `
             <div class="flex justify-between items-center bg-slate-50 border border-slate-100 p-3 rounded-xl text-xs shadow-2xs">
                 <span class="text-slate-500 font-medium">Essai du ${date}</span>
