@@ -75,7 +75,24 @@
                     <p id="message-confirmation" class="text-green-600 text-xs font-medium mt-2 text-center hidden">✅ Score enregistré avec succès !</p>
                 </div>
 
-                <!-- Liste des exercices (Sans scroll forcé, affichage complet) -->
+                <!-- NOUVEAU : Bandeau de gestion des sous-catégories (style identique à l'ajout) -->
+                <div id="bandeau-sous-cat-container" class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 hidden">
+                    <div class="flex items-center justify-between mb-3">
+                        <h3 class="text-sm font-semibold text-slate-800 flex items-center gap-1.5">
+                            <svg class="w-4 h-4 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path></svg>
+                            Gérer les sous-catégories
+                        </h3>
+                    </div>
+                    <div class="flex gap-2 mb-3">
+                        <input type="text" id="input-nom-sous-cat-rapide" placeholder="Nom de la sous-catégorie (ex: Mémorisation)..." class="flex-1 border border-slate-300 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <button onclick="creerSousCategorieRapide()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-lg text-xs font-medium transition-colors">Créer</button>
+                    </div>
+                    <div id="liste-sous-cat-bandeau" class="space-y-2 max-h-48 overflow-y-auto pr-1">
+                        <!-- Injecté par JS -->
+                    </div>
+                </div>
+
+                <!-- Liste des exercices -->
                 <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
                     <div class="grid grid-cols-12 gap-2 p-3 border-b border-slate-200 text-xs font-semibold text-slate-500 uppercase tracking-wider bg-slate-50">
                         <div class="col-span-6">Exercice / Catégorie</div>
@@ -104,11 +121,11 @@
         </div>
     </main>
 
-    <!-- MODALE DE GESTION DES GROUPES ET SOUS-CATÉGORIES -->
+    <!-- MODALE DE GESTION DES GROUPES (PRINCIPAUX) -->
     <div id="modal-groupes" class="fixed inset-0 bg-black/50 hidden flex items-center justify-center z-50 p-4">
-        <div class="bg-white rounded-2xl max-w-2xl w-full p-6 shadow-xl max-h-[90vh] overflow-y-auto">
+        <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-xl max-h-[90vh] overflow-y-auto">
             <div class="flex justify-between items-center mb-4 border-b pb-3">
-                <h3 class="text-lg font-bold text-slate-900">Gestion des Groupes et Sous-Catégories</h3>
+                <h3 class="text-lg font-bold text-slate-900">Gestion des Groupes Principaux</h3>
                 <button onclick="fermerModalGroupes()" class="text-slate-400 hover:text-slate-600 text-xl font-bold">&times;</button>
             </div>
             
@@ -120,7 +137,7 @@
                 </div>
             </div>
 
-            <div id="liste-gestion-groupes" class="space-y-6">
+            <div id="liste-gestion-groupes" class="space-y-4">
                 <!-- Injecté par JS -->
             </div>
 
