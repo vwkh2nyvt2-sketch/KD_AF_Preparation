@@ -228,7 +228,7 @@ function genererBandeauxEtGraphiquesGlobaux() {
     genererGrilleDroite();
 }
 
-// --- AFFICHAGE COLONNE DE GAUCHE (Filtré par groupe et catégories) ---
+// --- AFFICHAGE COLONNE DE GAUCHE (Hiérarchie : Catégorie en haut, exercices en dessous) ---
 function genererBandeauxGauche() {
     const container = document.getElementById('exercices-list');
     if(!container) return;
@@ -250,28 +250,53 @@ function genererBandeauxGauche() {
     }
 
     const nomsCats = Object.keys(sousCats);
+    
+    // Si aucune catégorie n'est créée, on affiche tous les exercices du groupe à la racine
+    if (nomsCats.length === 0) {
+        exercicesBruts.forEach(ex => {
+            container.innerHTML += rendreLigneExercice(ex);
+        });
+        return;
+    }
+
+    // Sinon, on boucle sur chaque catégorie et on affiche ses exercices en dessous
     nomsCats.forEach(nomCat => {
         const exDeLaCat = sousCats[nomCat] || [];
         const exValidesCat = exDeLaCat.filter(ex => exercicesBruts.includes(ex));
         
-        if (exValidesCat.length > 0) {
-            container.innerHTML += `<div class="bg-slate-100 px-3 py-1.5 text-[11px] font-bold text-slate-600 uppercase tracking-wider border-y border-slate-200 flex justify-between items-center"><span>📁 ${nomCat}</span><span class="text-[10px] text-slate-400 font-normal">${exValidesCat.length} test(s)</span></div>`;
+        // En-tête de la catégorie (Style de ton image)
+        container.innerHTML += `
+            <div class="bg-slate-100 px-4 py-2.5 text-xs font-bold text-slate-700 uppercase tracking-wider border-y border-slate-200 flex justify-between items-center">
+                <span class="flex items-center gap-2">📁 ${nomCat}</span>
+                <span class="text-[11px] text-slate-400 font-normal">${exValidesCat.length} test(s)</span>
+            </div>
+        `;
+
+        if (exValidesCat.length === 0) {
+            container.innerHTML += `<div class="p-3 text-slate-400 text-xs italic bg-white pl-8">Aucun exercice dans cette catégorie.</div>`;
+        } else {
             exValidesCat.forEach(ex => {
                 container.innerHTML += rendreLigneExercice(ex);
             });
         }
     });
 
+    // Gestion des exercices "orphelins" (qui ne sont dans aucune catégorie)
     const tousExClasses = [];
     Object.values(sousCats).forEach(liste => tousExClasses.push(...liste));
     const exRestants = exercicesBruts.filter(ex => !tousExClasses.includes(ex));
 
-    if (exRestants.length > 0 && nomsCats.length > 0) {
-        container.innerHTML += `<div class="bg-slate-100 px-3 py-1.5 text-[11px] font-bold text-slate-600 uppercase tracking-wider border-y border-slate-200">📌 Autres exercices</div>`;
+    if (exRestants.length > 0) {
+        container.innerHTML += `
+            <div class="bg-slate-100 px-4 py-2.5 text-xs font-bold text-slate-700 uppercase tracking-wider border-y border-slate-200 flex justify-between items-center">
+                <span class="flex items-center gap-2">📌 Autres exercices</span>
+                <span class="text-[11px] text-slate-400 font-normal">${exRestants.length} test(s)</span>
+            </div>
+        `;
+        exRestants.forEach(ex => {
+            container.innerHTML += rendreLigneExercice(ex);
+        });
     }
-    exRestants.forEach(ex => {
-        container.innerHTML += rendreLigneExercice(ex);
-    });
 }
 
 function rendreLigneExercice(ex) {
