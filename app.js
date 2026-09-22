@@ -156,7 +156,6 @@ function afficherNavigationGroupes() {
     const titreDroite = document.getElementById('titre-groupe-droite');
     if(titreDroite) titreDroite.textContent = groupeActif === 'Tous' ? 'Tous les exercices' : `Groupe : ${groupeActif}`;
 
-    // Afficher ou masquer le bandeau de sous-catégories selon si on est sur "Tous" ou un groupe
     const bandeauSubCat = document.getElementById('bandeau-sous-cat-container');
     if (bandeauSubCat) {
         if (groupeActif === 'Tous') {
@@ -208,8 +207,9 @@ function initialiserFormulaireSelect() {
 
     let exercicesDisponibles = tousLesExercices;
     if (groupeActif !== "Tous" && groupesPersonnalisés[groupeActif]) {
-        const g = groupesPersonnalisés[groupeActif];
-        exercicesDisponibles = Array.isArray(g.exercices) ? g.exercices : (g.exercices || []);
+        let g = groupesPersonnalisés[groupeActif];
+        if (Array.isArray(g)) g = { exercices: g, sousCategories: {} };
+        exercicesDisponibles = g.exercices || [];
     }
 
     exercicesDisponibles.forEach(ex => {
@@ -228,7 +228,7 @@ function genererBandeauxEtGraphiquesGlobaux() {
     genererGrilleDroite();
 }
 
-// --- AFFICHAGE COLONNE DE GAUCHE ---
+// --- AFFICHAGE COLONNE DE GAUCHE (Filtré strictement par groupe) ---
 function genererBandeauxGauche() {
     const container = document.getElementById('exercices-list');
     if(!container) return;
@@ -252,9 +252,12 @@ function genererBandeauxGauche() {
     const nomsCats = Object.keys(sousCats);
     nomsCats.forEach(nomCat => {
         const exDeLaCat = sousCats[nomCat] || [];
-        if (exDeLaCat.length > 0) {
+        // Filtrer uniquement les exercices qui appartiennent bien au groupe actif
+        const exValidesCat = exDeLaCat.filter(ex => exercicesBruts.includes(ex));
+        
+        if (exValidesCat.length > 0) {
             container.innerHTML += `<div class="bg-slate-100 px-3 py-1.5 text-[11px] font-bold text-slate-600 uppercase tracking-wider border-y border-slate-200">📁 ${nomCat}</div>`;
-            exDeLaCat.forEach(ex => {
+            exValidesCat.forEach(ex => {
                 container.innerHTML += rendreLigneExercice(ex);
             });
         }
@@ -332,7 +335,7 @@ function afficherBandeauxSousCategories() {
 
     const nomsCats = Object.keys(sousCats);
     if (nomsCats.length === 0) {
-        container.innerHTML = `<p class="text-[11px] text-slate-400 text-center py-2">Aucune sous-catégorie créée pour ce groupe.</p>`;
+        container.innerHTML = `<p class="text-[11px] text-slate-400 text-center py-2">Aucune sous-catégorie. Créez-en une ci-dessus.</p>`;
         return;
     }
 
@@ -414,7 +417,7 @@ window.basculerExerciceDansSousCat = async function(nomGroupe, nomCat, nomExerci
     genererBandeauxGauche();
 }
 
-// --- AFFICHAGE COLONNE DE DROITE (Grille de Mini-Courbes) ---
+// --- AFFICHAGE COLONNE DE DROITE (Grille de Mini-Courbes strictement filtrée) ---
 function genererGrilleDroite() {
     const grilleContainer = document.getElementById('grille-mini-courbes');
     if (!grilleContainer) return;
@@ -431,7 +434,7 @@ function genererGrilleDroite() {
     }
 
     if (exercicesAffiches.length === 0) {
-        grilleContainer.innerHTML = `<p class="text-xs text-slate-400 col-span-2 text-center py-12">Aucun exercice à afficher dans ce groupe.</p>`;
+        grilleContainer.innerHTML = `<p class="text-xs text-slate-400 col-span-2 text-center py-12">Aucun exercice dans ce groupe.</p>`;
         return;
     }
 
@@ -445,7 +448,7 @@ function genererGrilleDroite() {
         const cardHtml = `
             <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 shadow-2xs flex flex-col justify-between">
                 <div class="flex justify-between items-center mb-2">
-                    <span class="font-bold text-xs text-slate-700 truncate max-w-[70%]">${ex}</span>
+                    <span class="font-bold text-xs text-slate-700 truncate max-w-[70%]" title="${ex}">${ex}</span>
                     <span class="text-[11px] font-bold px-2 py-0.5 rounded text-white" style="background-color: ${couleurDernier}">Dernier : ${dernier}</span>
                 </div>
                 <div class="relative h-32 w-full">
