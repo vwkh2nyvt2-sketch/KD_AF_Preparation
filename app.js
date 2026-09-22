@@ -59,7 +59,7 @@ let evolutionChart = null;
 let barChart = null;
 let exerciceActuelDrawer = null;
 
-// --- 2. CHARGEMENT DEPUIS LE CLOUD ---
+// --- 2. CHARGEMENT ---
 async function chargerDonnees() {
     tousLesExercices.forEach(ex => statsGlobales[ex] = { scores: [], dates: [] });
 
@@ -100,7 +100,7 @@ async function enregistrerScore(scoreStanine) {
 
     genererBandeaux();
     if (exerciceActuelDrawer === exerciceSelectionne) {
-        ouvrirDrawer(exerciceSelectionne); // Rafraîchir le tiroir si ouvert
+        ouvrirDrawer(exerciceSelectionne);
     }
 }
 
@@ -119,13 +119,13 @@ async function supprimerGroupeDansCloud(nomGroupe) {
 }
 
 const getPointColor = (val) => {
-    if (val <= 2) return '#ef4444'; // Rouge
-    if (val <= 4) return '#f59e0b'; // Orange
-    if (val <= 7) return '#10b981'; // Vert
-    return '#3b82f6'; // Bleu
+    if (val <= 2) return '#ef4444';
+    if (val <= 4) return '#f59e0b';
+    if (val <= 7) return '#10b981';
+    return '#3b82f6';
 };
 
-// --- 4. INTERFACE PRINCIPALE ---
+// --- 4. INTERFACE ---
 function afficherNavigationGroupes() {
     const navContainer = document.getElementById('groupes-nav');
     if (!navContainer) return;
@@ -234,7 +234,6 @@ function genererBandeaux() {
         const textMoyenne = moyenne !== '-' ? '#ffffff' : '#94a3b8';
         const textDernier = dernier !== '-' ? getPointColor(dernier) : '#94a3b8';
 
-        // Génération des 9 petits carrés de niveau sur le bandeau
         let htmlCarres = '';
         for (let i = 1; i <= 9; i++) {
             const atteint = donnees.scores.includes(i);
@@ -249,7 +248,7 @@ function genererBandeaux() {
                     <span class="bg-indigo-100 text-indigo-600 text-xs font-bold px-2 py-1 rounded">PT</span>
                     <div>
                         <div class="font-semibold text-slate-800">${ex}</div>
-                        <div class="text-xs text-slate-500">${nbEssais > 0 ? nbEssais + ' essais • dernier il y a peu' : 'Aucun essai'}</div>
+                        <div class="text-xs text-slate-500">${nbEssais} essai(s) au total</div>
                     </div>
                 </div>
                 <div class="col-span-5 flex items-center justify-center gap-1">
@@ -267,7 +266,7 @@ function genererBandeaux() {
     });
 }
 
-// --- 5. GESTION DU PANNEAU LATÉRAL (DRAWER & GRAPHIQUES) ---
+// --- 5. PANNEAU LATÉRAL ---
 window.ouvrirDrawer = function(nomExercice) {
     exerciceActuelDrawer = nomExercice;
     document.getElementById('drawer-titre-exercice').textContent = nomExercice;
@@ -276,18 +275,25 @@ window.ouvrirDrawer = function(nomExercice) {
     const donnees = statsGlobales[nomExercice] || { scores: [], dates: [] };
     const nbEssais = donnees.scores.length;
 
+    document.getElementById('drawer-sous-titre').textContent = `Exercice Pilotest • ${nbEssais} essai(s) au total`;
+    document.getElementById('drawer-sous-titre-regularite').textContent = `${nbEssais} essai(s) au total sur la période`;
+
     let moyenne = '-';
     let dernier = '-';
     let record = '-';
+    let dateRecord = 'Aucun record';
 
     if (nbEssais > 0) {
         const somme = donnees.scores.reduce((a, b) => a + b, 0);
         moyenne = Math.round(somme / nbEssais);
         dernier = donnees.scores[nbEssais - 1];
-        record = Math.max(...donnees.scores);
+        
+        let maxScore = Math.max(...donnees.scores);
+        record = maxScore;
+        let indexRecord = donnees.scores.indexOf(maxScore);
+        dateRecord = donnees.dates[indexRecord] || '';
     }
 
-    // Affichage des blocs stats avec couleurs
     const boxMoy = document.getElementById('drawer-stat-moyenne');
     boxMoy.textContent = moyenne;
     boxMoy.style.color = moyenne !== '-' ? getPointColor(moyenne) : '#64748b';
@@ -299,8 +305,8 @@ window.ouvrirDrawer = function(nomExercice) {
     const boxRec = document.getElementById('drawer-stat-record');
     boxRec.textContent = record;
     boxRec.style.color = record !== '-' ? getPointColor(record) : '#64748b';
+    document.getElementById('drawer-date-record').textContent = dateRecord ? `le ${dateRecord}` : 'meilleur score';
 
-    // Rendu des graphiques
     rendreGraphiqueBarres(donnees.scores);
     rendreGraphiqueLigne(donnees);
     rendreListeEssais(donnees);
@@ -310,7 +316,6 @@ window.fermerDrawer = function() {
     document.getElementById('drawer-detail').classList.add('hidden');
 }
 
-// Graphique en barres (Répartition des scores 1 à 9)
 function rendreGraphiqueBarres(scores) {
     const counts = Array(9).fill(0);
     scores.forEach(s => {
@@ -327,7 +332,7 @@ function rendreGraphiqueBarres(scores) {
             datasets: [{
                 data: counts,
                 backgroundColor: [1,2,3,4,5,6,7,8,9].map(i => getPointColor(i)),
-                borderRadius: 4
+                borderRadius: 6
             }]
         },
         options: {
@@ -342,7 +347,6 @@ function rendreGraphiqueBarres(scores) {
     });
 }
 
-// Graphique en ligne (Évolution)
 function rendreGraphiqueLigne(donnees) {
     const ctx = document.getElementById('evolutionChart').getContext('2d');
     if (evolutionChart != null) evolutionChart.destroy();
@@ -355,13 +359,13 @@ function rendreGraphiqueLigne(donnees) {
                 label: 'Score Stanine',
                 data: donnees.scores,
                 borderColor: '#3b82f6',
-                borderWidth: 2,
+                borderWidth: 2.5,
                 tension: 0.1,
                 pointBackgroundColor: context => getPointColor(context.raw),
                 pointBorderColor: '#ffffff',
-                pointBorderWidth: 1.5,
-                pointRadius: 5,
-                pointHoverRadius: 7
+                pointBorderWidth: 2,
+                pointRadius: 6,
+                pointHoverRadius: 8
             }]
         },
         options: {
@@ -376,7 +380,6 @@ function rendreGraphiqueLigne(donnees) {
     });
 }
 
-// Liste textuelle des essais dans le tiroir
 function rendreListeEssais(donnees) {
     const container = document.getElementById('drawer-liste-essais');
     container.innerHTML = '';
@@ -386,22 +389,21 @@ function rendreListeEssais(donnees) {
         return;
     }
 
-    // Afficher du plus récent au plus ancien
     for (let i = donnees.scores.length - 1; i >= 0; i--) {
         const score = donnees.scores[i];
         const date = donnees.dates[i];
         const couleur = getPointColor(score);
 
         container.innerHTML += `
-            <div class="flex justify-between items-center bg-slate-50 border border-slate-100 p-2.5 rounded-lg text-xs">
+            <div class="flex justify-between items-center bg-slate-50 border border-slate-100 p-3 rounded-xl text-xs shadow-2xs">
                 <span class="text-slate-500 font-medium">Essai du ${date}</span>
-                <span class="font-bold px-2 py-0.5 rounded text-white" style="background-color: ${couleur}">Stanine ${score}</span>
+                <span class="font-bold px-2.5 py-1 rounded-lg text-white" style="background-color: ${couleur}">Stanine ${score}</span>
             </div>
         `;
     }
 }
 
-// --- 6. MODALE DE GESTION DES GROUPES ---
+// --- 6. MODALE GROUPES ---
 window.ouvrirModalGroupes = function() {
     document.getElementById('modal-groupes').classList.remove('hidden');
     rendreInterfaceGestionGroupes();
