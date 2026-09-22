@@ -75,31 +75,33 @@
                     <p id="message-confirmation" class="text-green-600 text-xs font-medium mt-2 text-center hidden">✅ Score enregistré avec succès !</p>
                 </div>
 
-                <!-- BANDEAU "GÉRER LES CATÉGORIES" (Affiché uniquement dans un groupe) -->
+                <!-- BANDEAU "GÉRER LES CATÉGORIES" QUI CONTIENT DIRECTEMENT LES BLOCS DE CATÉGORIES ET LEURS EXERCICES -->
                 <div id="bandeau-gestion-categories" class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 hidden">
-                    <div class="flex items-center justify-between mb-3 border-b pb-2">
+                    <div class="flex items-center justify-between mb-4 border-b pb-3">
                         <h3 class="text-sm font-semibold text-slate-800 flex items-center gap-1.5">
                             <svg class="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
                             Gérer les catégories
                         </h3>
-                        <button onclick="ouvrirModalCategories()" class="text-xs font-medium text-indigo-600 hover:text-indigo-800 bg-indigo-50 px-2.5 py-1 rounded-lg flex items-center gap-1">
+                        <button onclick="ouvrirModalCategories()" class="text-xs font-medium text-indigo-600 hover:text-indigo-800 bg-indigo-50 px-3 py-1.5 rounded-lg flex items-center gap-1 shadow-2xs">
                             ⚙️ Éditer / Créer
                         </button>
                     </div>
-                    <div id="resume-categories-actif" class="space-y-2">
-                        <!-- Résumé des catégories existantes injecté par JS -->
+
+                    <!-- Conteneur où les catégories et leurs tests s'affichent directement -->
+                    <div id="conteneur-categories-avec-exercices" class="space-y-4">
+                        <!-- Injecté par JS -->
                     </div>
                 </div>
 
-                <!-- Liste des exercices -->
-                <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                <!-- Si aucun groupe n'est sélectionné ("Tous"), on garde la liste globale classique -->
+                <div id="fallback-liste-tous" class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
                     <div class="grid grid-cols-12 gap-2 p-3 border-b border-slate-200 text-xs font-semibold text-slate-500 uppercase tracking-wider bg-slate-50">
-                        <div class="col-span-6">Exercice / Catégorie</div>
+                        <div class="col-span-6">Exercice</div>
                         <div class="col-span-4 text-center">Niveau</div>
                         <div class="col-span-1 text-center">Moy</div>
                         <div class="col-span-1 text-center">Dern</div>
                     </div>
-                    <div id="exercices-list" class="divide-y divide-slate-100">
+                    <div id="exercices-list" class="divide-y divide-slate-100 max-h-[600px] overflow-y-auto">
                         <!-- Injecté par JS -->
                     </div>
                 </div>

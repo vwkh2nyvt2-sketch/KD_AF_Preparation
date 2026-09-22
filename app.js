@@ -60,7 +60,7 @@ let barChart = null;
 let exerciceActuelDrawer = null;
 let miniCharts = {};
 
-// --- 2. CHARGEMENT ---
+// --- 3. CHARGEMENT DEPUIS LE CLOUD ---
 async function chargerDonnees() {
     tousLesExercices.forEach(ex => statsGlobales[ex] = { scores: [], dates: [], ids: [] });
 
@@ -88,7 +88,7 @@ async function chargerDonnees() {
     }
 }
 
-// --- 3. SAUVEGARDE ---
+// --- 4. SAUVEGARDE DES SCORES ---
 async function enregistrerScore(scoreStanine) {
     const exerciceSelectionne = document.getElementById('select-exercice').value;
     if (!exerciceSelectionne) return;
@@ -130,7 +130,7 @@ const getPointColor = (val) => {
     return '#3b82f6';
 };
 
-// --- 4. INTERFACE & NAVIGATION ---
+// --- 5. INTERFACE & NAVIGATION ---
 function afficherNavigationGroupes() {
     const navContainer = document.getElementById('groupes-nav');
     if (!navContainer) return;
@@ -157,12 +157,16 @@ function afficherNavigationGroupes() {
     if(titreDroite) titreDroite.textContent = groupeActif === 'Tous' ? 'Tous les exercices' : `Groupe : ${groupeActif}`;
 
     const bandeauCat = document.getElementById('bandeau-gestion-categories');
-    if (bandeauCat) {
+    const fallbackTous = document.getElementById('fallback-liste-tous');
+
+    if (bandeauCat && fallbackTous) {
         if (groupeActif === 'Tous') {
             bandeauCat.classList.add('hidden');
+            fallbackTous.classList.remove('hidden');
         } else {
             bandeauCat.classList.remove('hidden');
-            afficherResumeCategoriesBandeau();
+            fallbackTous.classList.add('hidden');
+            renderCategoriesDirectementDansBandeau();
         }
     }
 }
@@ -228,78 +232,72 @@ function genererBandeauxEtGraphiquesGlobaux() {
     genererGrilleDroite();
 }
 
-// --- AFFICHAGE COLONNE DE GAUCHE (Hiérarchie : Catégorie en haut, exercices en dessous) ---
+// --- RENDU GLOBAL GAUCHE ---
 function genererBandeauxGauche() {
-    const container = document.getElementById('exercices-list');
-    if(!container) return;
-    container.innerHTML = '';
-
-    let exercicesBruts = tousLesExercices;
-    let sousCats = {};
-
-    if (groupeActif !== "Tous" && groupesPersonnalisés[groupeActif]) {
-        let g = groupesPersonnalisés[groupeActif];
-        if (Array.isArray(g)) g = { exercices: g, sousCategories: {} };
-        exercicesBruts = g.exercices || [];
-        sousCats = g.sousCategories || {};
-    }
-
-    if (exercicesBruts.length === 0) {
-        container.innerHTML = `<div class="p-6 text-center text-slate-400 text-xs">Aucun exercice dans ce groupe. Cliquez sur "Gérer les Groupes" pour en ajouter.</div>`;
-        return;
-    }
-
-    const nomsCats = Object.keys(sousCats);
-    
-    // Si aucune catégorie n'est créée, on affiche tous les exercices du groupe à la racine
-    if (nomsCats.length === 0) {
-        exercicesBruts.forEach(ex => {
-            container.innerHTML += rendreLigneExercice(ex);
+    if (groupeActif === 'Tous') {
+        const container = document.getElementById('exercices-list');
+        if (!container) return;
+        container.innerHTML = '';
+        tousLesExercices.forEach(ex => {
+            container.innerHTML += rendreLigneExerciceCompacte(ex);
         });
-        return;
-    }
-
-    // Sinon, on boucle sur chaque catégorie et on affiche ses exercices en dessous
-    nomsCats.forEach(nomCat => {
-        const exDeLaCat = sousCats[nomCat] || [];
-        const exValidesCat = exDeLaCat.filter(ex => exercicesBruts.includes(ex));
-        
-        // En-tête de la catégorie (Style de ton image)
-        container.innerHTML += `
-            <div class="bg-slate-100 px-4 py-2.5 text-xs font-bold text-slate-700 uppercase tracking-wider border-y border-slate-200 flex justify-between items-center">
-                <span class="flex items-center gap-2">📁 ${nomCat}</span>
-                <span class="text-[11px] text-slate-400 font-normal">${exValidesCat.length} test(s)</span>
-            </div>
-        `;
-
-        if (exValidesCat.length === 0) {
-            container.innerHTML += `<div class="p-3 text-slate-400 text-xs italic bg-white pl-8">Aucun exercice dans cette catégorie.</div>`;
-        } else {
-            exValidesCat.forEach(ex => {
-                container.innerHTML += rendreLigneExercice(ex);
-            });
-        }
-    });
-
-    // Gestion des exercices "orphelins" (qui ne sont dans aucune catégorie)
-    const tousExClasses = [];
-    Object.values(sousCats).forEach(liste => tousExClasses.push(...liste));
-    const exRestants = exercicesBruts.filter(ex => !tousExClasses.includes(ex));
-
-    if (exRestants.length > 0) {
-        container.innerHTML += `
-            <div class="bg-slate-100 px-4 py-2.5 text-xs font-bold text-slate-700 uppercase tracking-wider border-y border-slate-200 flex justify-between items-center">
-                <span class="flex items-center gap-2">📌 Autres exercices</span>
-                <span class="text-[11px] text-slate-400 font-normal">${exRestants.length} test(s)</span>
-            </div>
-        `;
-        exRestants.forEach(ex => {
-            container.innerHTML += rendreLigneExercice(ex);
-        });
+    } else {
+        renderCategoriesDirectementDansBandeau();
     }
 }
 
-function rendreLigneExercice(ex) {
+// --- RENDU DIRECT DES CATÉGORIES ET DE LEURS EXERCICES DANS LE BANDEAU ---
+function renderCategoriesDirectementDansBandeau() {
+    const container = document.getElementById('conteneur-categories-avec-exercices');
+    if (!container) return;
+    container.innerHTML = '';
+
+    if (groupeActif === 'Tous' || !groupesPersonnalisés[groupeActif]) return;
+    let g = groupesPersonnalisés[groupeActif];
+    if (Array.isArray(g)) g = { exercices: g, sousCategories: {} };
+    
+    const sousCats = g.sousCategories || {};
+    const exercicesDuGroupe = g.exercices || [];
+    const nomsCats = Object.keys(sousCats);
+
+    if (nomsCats.length === 0) {
+        container.innerHTML = `
+            <div class="text-center py-6 text-slate-400 text-xs bg-slate-50 rounded-xl border border-dashed border-slate-200">
+                Aucune catégorie créée pour ce groupe.<br>Cliquez sur <strong>"⚙️ Éditer / Créer"</strong> ci-dessus pour en ajouter.
+            </div>`;
+        return;
+    }
+
+    nomsCats.forEach(nomCat => {
+        const exList = (sousCats[nomCat] || []).filter(ex => exercicesDuGroupe.includes(ex));
+        
+        let htmlExercicesDansCat = '';
+        if (exList.length === 0) {
+            htmlExercicesDansCat = `<div class="p-3 text-[11px] text-slate-400 italic text-center">Aucun exercice dans cette catégorie.</div>`;
+        } else {
+            exList.forEach(ex => {
+                htmlExercicesDansCat += rendreLigneExerciceCompacte(ex);
+            });
+        }
+
+        container.innerHTML += `
+            <div class="bg-slate-50 border border-slate-200 rounded-xl overflow-hidden shadow-2xs">
+                <div class="bg-slate-100 px-4 py-2.5 flex justify-between items-center border-b border-slate-200">
+                    <span class="font-bold text-xs text-slate-700 uppercase tracking-wider flex items-center gap-2">
+                        📁 ${nomCat} <span class="text-[10px] text-slate-400 font-normal">(${exList.length} test(s))</span>
+                    </span>
+                    <button onclick="editerCategorie('${nomCat}')" class="text-slate-400 hover:text-indigo-600 p-1 text-xs font-bold" title="Modifier cette catégorie">⚙️</button>
+                </div>
+                <div class="divide-y divide-slate-100 bg-white">
+                    ${htmlExercicesDansCat}
+                </div>
+            </div>
+        `;
+    });
+}
+
+// Ligne d'exercice compacte
+function rendreLigneExerciceCompacte(ex) {
     const donnees = statsGlobales[ex] || { scores: [], dates: [], ids: [] };
     const nbEssais = donnees.scores.length;
     let moyenne = '-';
@@ -320,14 +318,14 @@ function rendreLigneExercice(ex) {
         const atteint = donnees.scores.includes(i);
         const couleur = atteint ? getPointColor(i) : '#f1f5f9';
         const textColor = atteint ? '#ffffff' : '#cbd5e1';
-        htmlCarres += `<div class="w-5 h-5 rounded flex items-center justify-center text-[10px] font-bold" style="background-color: ${couleur}; color: ${textColor}">${i}</div>`;
+        htmlCarres += `<div class="w-4 h-4 rounded flex items-center justify-center text-[9px] font-bold" style="background-color: ${couleur}; color: ${textColor}">${i}</div>`;
     }
 
     return `
-        <div onclick="ouvrirDrawer('${ex}')" class="grid grid-cols-12 gap-2 p-3 items-center hover:bg-slate-50 transition-colors cursor-pointer">
+        <div onclick="ouvrirDrawer('${ex}')" class="grid grid-cols-12 gap-2 p-2.5 items-center hover:bg-slate-50 transition-colors cursor-pointer text-xs">
             <div class="col-span-6 flex items-center gap-2">
                 <div>
-                    <div class="font-semibold text-xs text-slate-800">${ex}</div>
+                    <div class="font-semibold text-slate-800 text-xs">${ex}</div>
                     <div class="text-[10px] text-slate-400">${nbEssais} essai(s)</div>
                 </div>
             </div>
@@ -335,53 +333,20 @@ function rendreLigneExercice(ex) {
                 ${htmlCarres}
             </div>
             <div class="col-span-1 flex justify-center">
-                <div class="w-6 h-6 rounded flex items-center justify-center text-xs font-bold shadow-sm" style="background-color: ${bgMoyenne}; color: ${textMoyenne}">${moyenne}</div>
+                <div class="w-5 h-5 rounded flex items-center justify-center text-[10px] font-bold shadow-sm" style="background-color: ${bgMoyenne}; color: ${textMoyenne}">${moyenne}</div>
             </div>
             <div class="col-span-1 flex justify-center">
-                <div class="w-6 h-6 flex items-center justify-center font-bold text-sm" style="color: ${textDernier}">${dernier}</div>
+                <div class="w-5 h-5 flex items-center justify-center font-bold text-xs" style="color: ${textDernier}">${dernier}</div>
             </div>
         </div>
     `;
 }
 
-// --- GESTION DU BANDEAU CATÉGORIES À GAUCHE ---
-function afficherResumeCategoriesBandeau() {
-    const container = document.getElementById('resume-categories-actif');
-    if (!container) return;
-    container.innerHTML = '';
-
-    if (groupeActif === 'Tous' || !groupesPersonnalisés[groupeActif]) return;
-    let g = groupesPersonnalisés[groupeActif];
-    if (Array.isArray(g)) g = { exercices: g, sousCategories: {} };
-    
-    const sousCats = g.sousCategories || {};
-    const nomsCats = Object.keys(sousCats);
-
-    if (nomsCats.length === 0) {
-        container.innerHTML = `<p class="text-[11px] text-slate-400 text-center py-2">Aucune catégorie. Cliquez sur "Éditer / Créer" pour organiser vos tests.</p>`;
-        return;
-    }
-
-    nomsCats.forEach(nomCat => {
-        const exList = sousCats[nomCat] || [];
-        container.innerHTML += `
-            <div class="bg-slate-50 border border-slate-200 rounded-lg p-2 flex justify-between items-center text-xs">
-                <div>
-                    <span class="font-bold text-slate-700">📁 ${nomCat}</span>
-                    <span class="text-[10px] text-slate-400 ml-2">(${exList.length} test(s))</span>
-                </div>
-                <button onclick="editerCategorie('${nomCat}')" class="text-slate-400 hover:text-indigo-600 p-1 font-bold" title="Modifier la catégorie">⚙️</button>
-            </div>
-        `;
-    });
-}
-
-// --- MODALE DE GESTION DES CATÉGORIES (Type image) ---
+// --- MODALE DE GESTION DES CATÉGORIES ---
 window.ouvrirModalCategories = function(nomCatEdit = null) {
     if (groupeActif === 'Tous') return;
     document.getElementById('modal-categories').classList.remove('hidden');
     
-    // Charger les checkboxes des exercices disponibles dans ce groupe
     let g = groupesPersonnalisés[groupeActif];
     if (Array.isArray(g)) g = { exercices: g, sousCategories: {} };
     const exercicesDuGroupe = g.exercices || [];
@@ -402,11 +367,9 @@ window.ouvrirModalCategories = function(nomCatEdit = null) {
         });
     }
 
-    // Charger la liste existante des catégories pour l'édition / suppression avec le bouton ⚙️
     rendreListeCategoriesExistantesModal();
 
     if (nomCatEdit) {
-        // Mode édition
         document.getElementById('modal-cat-titre').textContent = `Modifier la catégorie : ${nomCatEdit}`;
         document.getElementById('edit-cat-ancien-nom').value = nomCatEdit;
         document.getElementById('input-nom-cat').value = nomCatEdit;
@@ -417,7 +380,6 @@ window.ouvrirModalCategories = function(nomCatEdit = null) {
             if (dejaCoches.includes(inp.value)) inp.checked = true;
         });
     } else {
-        // Mode création
         document.getElementById('modal-cat-titre').textContent = 'Gérer les catégories';
         document.getElementById('edit-cat-ancien-nom').value = '';
         document.getElementById('input-nom-cat').value = '';
@@ -452,11 +414,9 @@ window.validerEnregistrementCategorie = async function() {
     if (Array.isArray(g)) g = { exercices: g, sousCategories: {} };
     if (!g.sousCategories) g.sousCategories = {};
 
-    // Récupérer les exercices cochés
     const checkboxes = document.querySelectorAll('input[name="cat-ex-checkbox"]:checked');
     const exercicesSelectionnes = Array.from(checkboxes).map(cb => cb.value);
 
-    // Si on renommait une catégorie, supprimer l'ancienne entrée
     if (ancienNom && ancienNom !== nomCatInput) {
         delete g.sousCategories[ancienNom];
     }
@@ -467,8 +427,8 @@ window.validerEnregistrementCategorie = async function() {
     await sauvegarderGroupesDansCloud();
     annulerEditionCategorie();
     rendreListeCategoriesExistantesModal();
-    afficherResumeCategoriesBandeau();
-    genererBandeauxGauche();
+    afficherNavigationGroupes();
+    genererBandeauxEtGraphiquesGlobaux();
 }
 
 window.editerCategorie = function(nomCat) {
@@ -483,8 +443,8 @@ window.supprimerCategorieModal = async function(nomCat) {
         groupesPersonnalisés[groupeActif] = g;
         await sauvegarderGroupesDansCloud();
         rendreListeCategoriesExistantesModal();
-        afficherResumeCategoriesBandeau();
-        genererBandeauxGauche();
+        afficherNavigationGroupes();
+        genererBandeauxEtGraphiquesGlobaux();
     }
 }
 
@@ -512,15 +472,15 @@ function rendreListeCategoriesExistantesModal() {
                     <div class="text-[10px] text-slate-400 mt-0.5">${list.join(', ') || 'Aucun exercice'}</div>
                 </div>
                 <div class="flex items-center gap-2">
-                    <button onclick="editerCategorie('${nomCat}')" class="bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 p-1.5 rounded-lg text-xs" title="Modifier avec l'engrenage">⚙️ Éditer</button>
-                    <button onclick="supprimerCategorieModal('${nomCat}')" class="bg-red-50 hover:bg-red-100 text-red-600 p-1.5 rounded-lg text-xs" title="Supprimer">🗑️</button>
+                    <button onclick="editerCategorie('${nomCat}')" class="bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 p-1.5 rounded-lg text-xs">⚙️ Éditer</button>
+                    <button onclick="supprimerCategorieModal('${nomCat}')" class="bg-red-50 hover:bg-red-100 text-red-600 p-1.5 rounded-lg text-xs">🗑️</button>
                 </div>
             </div>
         `;
     });
 }
 
-// --- AFFICHAGE COLONNE DE DROITE (Grille de Mini-Courbes strictement filtrée) ---
+// --- AFFICHAGE COLONNE DE DROITE (Grille de Mini-Courbes) ---
 function genererGrilleDroite() {
     const grilleContainer = document.getElementById('grille-mini-courbes');
     if (!grilleContainer) return;
@@ -594,7 +554,7 @@ function genererGrilleDroite() {
     });
 }
 
-// --- 5. GESTION DU PANNEAU LATÉRAL (TIROIR) ---
+// --- 6. GESTION DU PANNEAU LATÉRAL (TIROIR) ---
 window.ouvrirDrawer = function(nomExercice) {
     exerciceActuelDrawer = nomExercice;
     document.getElementById('drawer-titre-exercice').textContent = nomExercice;
@@ -748,7 +708,7 @@ window.supprimerScore = async function(idScore, nomExercice) {
     ouvrirDrawer(nomExercice);
 }
 
-// --- 6. EXPORT EXCEL ---
+// --- 7. EXPORT EXCEL ---
 window.exporterVersExcel = async function() {
     const { data: scoresData, error } = await supabaseClient.from('scores').select('*').order('id', { ascending: true });
     if (error || !scoresData || scoresData.length === 0) { alert("⚠️ Aucun score à exporter !"); return; }
@@ -765,7 +725,7 @@ window.exporterVersExcel = async function() {
     link.remove();
 }
 
-// --- 7. MODALE DE GESTION DES GROUPES PRINCIPAUX ---
+// --- 8. MODALE DE GESTION DES GROUPES ---
 window.ouvrirModalGroupes = function() {
     document.getElementById('modal-groupes').classList.remove('hidden');
     rendreInterfaceGestionGroupes();
@@ -822,7 +782,7 @@ function rendreInterfaceGestionGroupes() {
     container.innerHTML = '';
     const clesGroupes = Object.keys(groupesPersonnalisés);
     if (clesGroupes.length === 0) {
-        container.innerHTML = `<p class="text-sm text-slate-400 text-center py-4">Aucun groupe principal pour l'instant.</p>`;
+        container.innerHTML = `<p class="text-sm text-slate-400 text-center py-4">Aucun groupe pour l'instant.</p>`;
         return;
     }
     clesGroupes.forEach(nomGroupe => {
@@ -845,7 +805,7 @@ function rendreInterfaceGestionGroupes() {
             <div class="border border-slate-200 rounded-xl p-4 bg-slate-50 space-y-3">
                 <div class="flex justify-between items-center border-b pb-2">
                     <h5 class="font-bold text-sm text-slate-800">📁 ${nomGroupe} (${exercicesDuGroupe.length} tests)</h5>
-                    <button onclick="supprimerGroupe('${nomGroupe}')" class="text-xs text-red-500 hover:text-red-700 font-medium">Supprimer le groupe</button>
+                    <button onclick="supprimerGroupe('${nomGroupe}')" class="text-xs text-red-500 hover:text-red-700 font-medium">Supprimer</button>
                 </div>
                 <div class="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto p-1 bg-slate-100 rounded-lg">
                     ${htmlExercicesDispos}
@@ -855,7 +815,7 @@ function rendreInterfaceGestionGroupes() {
     });
 }
 
-// --- 8. DÉMARRAGE ---
+// --- 9. DÉMARRAGE ---
 async function demarrerDashboard() {
     await chargerDonnees();
     afficherNavigationGroupes();
