@@ -3,16 +3,53 @@ const SUPABASE_URL = 'https://bansqfbzsdjovlaewrvx.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_-r-98cutZLtigCMEhfILOQ_uXX1byh0';
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-// --- 2. LISTE DE TOUS LES EXERCICES ---
+// --- 2. LISTE DE TOUS LES EXERCICES (MISE À JOUR COMPLÈTE PILOTEST) ---
 const tousLesExercices = [
-    "Airways", "Ami ou ennemi", "Anglais", "Angles",
-    "Angles à cocher", "Angles à saisir", "Attention 1", "Attention 2", 
-    "Attention 2 + Tâches Perturbatrices", "Attention 3", "BLS IV",
-    "Calcul mental 1", "Calcul mental 2", "Calcul mental 3", "Calcul mental 4",
-    "Chaise (point de vue)", "Lecture de texte", "Mathématiques", "Matrices de Raven",
-    "Mémoire de travail I", "Mémoire de travail II", "Patrons de cubes - PSY1",
-    "Psychomoteur ENAC", "Tangram à compléter", "Tangram à proposition",
-    "Test des compteurs", "Voiture séquentiel"
+    "Airways", 
+    "Angles à cocher", 
+    "Angles à saisir", 
+    "Attention 1", 
+    "Attention 2", 
+    "Attention 3", 
+    "Billes", 
+    "Boîtes à mots", 
+    "Calcul mental 1", 
+    "Calcul mental 2", 
+    "Calcul mental 3", 
+    "Calcul mental 4", 
+    "Cubes 2D/3D - psy0 Air France", 
+    "DLR/AF Cadets psy1 - VLR - Orientation spatiale", 
+    "Dominos", 
+    "EFG", 
+    "Empilements", 
+    "Formes et couleurs", 
+    "Formes glissées - I", 
+    "Formes glissées - II", 
+    "Grilles de calculs", 
+    "Lecture de textes", 
+    "M2 Back numérique", 
+    "Mathématiques", 
+    "Matrices de Raven", 
+    "Memory 2 Back couleurs", 
+    "Memory 3 Back", 
+    "Memory 4 Back", 
+    "Memory 5 Back", 
+    "Mémoire de travail I", 
+    "Mémoire de travail II", 
+    "Mots en étoile", 
+    "Objets 3D", 
+    "Pair ou impair", 
+    "Patrons de cubes - psy1 - Cadets AF", 
+    "Psychomoteur ENAC", 
+    "Psychomoteur psy0 AF cadet", 
+    "Séries logiques", 
+    "Tangram", 
+    "Tangram à compléter", 
+    "Test des compteurs", 
+    "Trouvez l'intrus @Air France", 
+    "Un mot sur deux", 
+    "Voitures (basique)", 
+    "Voitures (séquentiel)"
 ];
 
 let statsGlobales = {};
@@ -56,8 +93,8 @@ async function chargerDonnees() {
         groupesData.forEach(g => groupesPersonnalisés[g.nom] = g.exercices);
     } else {
         groupesPersonnalisés = {
-            "PSY0": ["Calcul mental 1", "Calcul mental 2", "Calcul mental 3", "Calcul mental 4", "Mathématiques"],
-            "PSY1": ["Airways", "Angles", "Attention 1", "Patrons de cubes - PSY1"]
+            "PSY0": ["Calcul mental 1", "Calcul mental 2", "Calcul mental 3", "Calcul mental 4", "Mathématiques", "Anglais présélection cadets Air France", "Culture aéronautique psy0 cadets Air France"],
+            "PSY1": ["Airways", "Angles", "Attention 1", "Patrons de cubes - psy1 - Cadets AF", "Psychomoteur ENAC"]
         };
         await sauvegarderGroupesDansCloud();
     }
