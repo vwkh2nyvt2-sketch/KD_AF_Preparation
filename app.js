@@ -57,12 +57,13 @@ let groupesPersonnalisés = {};
 let groupeActif = "Tous";
 let evolutionChart = null;
 
-// --- 3. CHARGEMENT DEPUIS LE CLOUD (AVEC DÉTECTION D'ERREUR) ---
+// --- 3. CHARGEMENT DEPUIS LE CLOUD (SANS GROUPES PRÉ-CRÉÉS) ---
 async function chargerDonnees() {
     tousLesExercices.forEach(ex => statsGlobales[ex] = { scores: [], dates: [] });
 
     console.log("Tentative de connexion à Supabase...");
 
+    // A. Récupération des scores
     const { data: scoresData, error: scoresError } = await supabaseClient.from('scores').select('*').order('id', { ascending: true });
     
     if (scoresError) {
@@ -80,6 +81,7 @@ async function chargerDonnees() {
         });
     }
 
+    // B. Récupération des groupes (Vierge si aucun groupe n'a été créé)
     const { data: groupesData, error: groupesError } = await supabaseClient.from('groupes').select('*');
     
     if (groupesError) {
@@ -88,19 +90,13 @@ async function chargerDonnees() {
         return;
     }
 
+    groupesPersonnalisés = {};
     if (groupesData && groupesData.length > 0) {
-        groupesPersonnalisés = {};
         groupesData.forEach(g => groupesPersonnalisés[g.nom] = g.exercices);
-    } else {
-        groupesPersonnalisés = {
-            "PSY0": ["Calcul mental 1", "Calcul mental 2", "Calcul mental 3", "Calcul mental 4", "Mathématiques", "Anglais présélection cadets Air France", "Culture aéronautique psy0 cadets Air France"],
-            "PSY1": ["Airways", "Angles", "Attention 1", "Patrons de cubes - psy1 - Cadets AF", "Psychomoteur ENAC"]
-        };
-        await sauvegarderGroupesDansCloud();
     }
 }
 
-// --- 4. SAUVEGARDE DANS LE CLOUD (AVEC DÉTECTION D'ERREUR) ---
+// --- 4. SAUVEGARDE DANS LE CLOUD ---
 async function enregistrerScore(scoreStanine) {
     const exerciceSelectionne = document.getElementById('select-exercice').value;
     if (!exerciceSelectionne) return;
@@ -110,7 +106,6 @@ async function enregistrerScore(scoreStanine) {
     statsGlobales[exerciceSelectionne].scores.push(scoreStanine);
     statsGlobales[exerciceSelectionne].dates.push(dateJour);
     
-    // Envoi vers Supabase et capture d'erreur
     const { error } = await supabaseClient.from('scores').insert([
         { date_test: dateJour, exercice: exerciceSelectionne, score_stanine: scoreStanine }
     ]);
@@ -133,6 +128,8 @@ async function sauvegarderGroupesDansCloud() {
         nom: nom,
         exercices: groupesPersonnalisés[nom]
     }));
+    
+    // Si aucun groupe n'existe, on envoie un tableau vide ou on nettoie
     if (formattedGroups.length > 0) {
         const { error } = await supabaseClient.from('groupes').upsert(formattedGroups);
         if (error) {
@@ -242,7 +239,7 @@ function genererBandeaux() {
     }
 
     if (exercicesAffiches.length === 0) {
-        container.innerHTML = `<div class="p-6 text-center text-slate-400 text-sm">Aucun exercice dans ce groupe pour le moment.</div>`;
+        container.innerHTML = `<div class="p-6 text-center text-slate-400 text-sm">Aucun exercice dans ce groupe pour le moment. Cliquez sur "Créer / Modifier les groupes" pour en ajouter.</div>`;
         return;
     }
 
@@ -384,7 +381,7 @@ function rendreInterfaceGestionGroupes() {
 
     const clesGroupes = Object.keys(groupesPersonnalisés);
     if (clesGroupes.length === 0) {
-        container.innerHTML = `<p class="text-sm text-slate-400 text-center py-4">Aucun groupe personnalisé pour l'instant.</p>`;
+        container.innerHTML = `<p class="text-sm text-slate-400 text-center py-4">Aucun groupe personnalisé pour l'instant. Créez-en un ci-dessus !</p>`;
         return;
     }
 
@@ -415,7 +412,7 @@ function rendreInterfaceGestionGroupes() {
     });
 }
 
-// --- DÉMARRAGE DE L'APPLICATION ---
+// --- DÉMARRAGE DE LA NAVIGATION ---
 async function demarrerDashboard() {
     await chargerDonnees();
     afficherNavigationGroupes();
