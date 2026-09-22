@@ -17,13 +17,13 @@
     <!-- Navbar -->
     <nav class="bg-white border-b border-slate-200 px-6 py-3 flex items-center justify-between mb-6 shadow-sm">
         <div class="flex items-center gap-6">
-            <div class="font-bold text-xl tracking-tighter text-blue-900">✈️ CADETS ✈️</div>
+            <div class="font-bold text-xl tracking-tighter text-blue-900">✈️ CADETS</div>
             <div class="flex gap-4 text-sm font-medium text-slate-500">
+                <a href="#" class="hover:text-slate-800">Accueil</a>
                 <a href="#" class="text-blue-600 border-b-2 border-blue-600 pb-1">Suivi de Performances</a>
             </div>
         </div>
 
-        <!-- NOUVEAU : Bouton Exporter vers Excel -->
         <div>
             <button onclick="exporterVersExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-4 py-2.5 rounded-xl shadow-sm transition-colors flex items-center gap-2">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
@@ -48,10 +48,10 @@
         <!-- CONTENEUR GLOBAL EN 2 COLONNES (50% / 50%) -->
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
             
-            <!-- COLONNE GAUCHE (Prend 6 colonnes sur 12 = 50%) : Ajout de test + Liste des exercices -->
+            <!-- COLONNE GAUCHE -->
             <div class="lg:col-span-6 space-y-6">
                 
-                <!-- Encadré d'ajout de test (même largeur que la liste) -->
+                <!-- Encadré d'ajout de test compact -->
                 <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
                     <div class="flex flex-col gap-3">
                         <div class="flex items-center justify-between">
@@ -75,52 +75,52 @@
                     <p id="message-confirmation" class="text-green-600 text-xs font-medium mt-2 text-center hidden">✅ Score enregistré avec succès !</p>
                 </div>
 
-                <!-- Liste des exercices -->
+                <!-- Liste des exercices (Sans scroll forcé, affichage complet) -->
                 <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-                    <div class="grid grid-cols-12 gap-2 p-4 border-b border-slate-200 text-xs font-semibold text-slate-500 uppercase tracking-wider bg-slate-50">
-                        <div class="col-span-6">Exercice</div>
+                    <div class="grid grid-cols-12 gap-2 p-3 border-b border-slate-200 text-xs font-semibold text-slate-500 uppercase tracking-wider bg-slate-50">
+                        <div class="col-span-6">Exercice / Catégorie</div>
                         <div class="col-span-4 text-center">Niveau</div>
                         <div class="col-span-1 text-center">Moy</div>
                         <div class="col-span-1 text-center">Dern</div>
                     </div>
-                    <div id="exercices-list" class="max-h-[600px] overflow-y-auto">
+                    <div id="exercices-list" class="divide-y divide-slate-100">
                         <!-- Injecté par JS -->
                     </div>
                 </div>
 
             </div>
 
-            <!-- COLONNE DROITE (Prend 6 colonnes sur 12 = 50%) : Vue graphique globale remontée tout en haut -->
+            <!-- COLONNE DROITE -->
             <div class="lg:col-span-6 bg-white rounded-xl shadow-sm border border-slate-200 p-6 sticky top-4">
                 <h3 class="text-sm font-bold uppercase tracking-wider text-slate-500 mb-4 border-b pb-2 flex justify-between items-center">
                     <span>Vue Graphique Globale du Groupe</span>
                     <span id="titre-groupe-droite" class="text-xs text-blue-600 font-normal">Tous les exercices</span>
                 </h3>
-                <div id="grille-mini-courbes" class="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[700px] overflow-y-auto pr-2">
-                    <p class="text-xs text-slate-400 col-span-2 text-center py-12">Sélectionnez un exercice ou un groupe pour afficher les courbes de synthèse.</p>
+                <div id="grille-mini-courbes" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <p class="text-xs text-slate-400 col-span-2 text-center py-12">Sélectionnez un groupe pour afficher les graphiques de synthèse.</p>
                 </div>
             </div>
 
         </div>
     </main>
 
-    <!-- MODALE DE GESTION DES GROUPES -->
+    <!-- MODALE DE GESTION DES GROUPES ET SOUS-CATÉGORIES -->
     <div id="modal-groupes" class="fixed inset-0 bg-black/50 hidden flex items-center justify-center z-50 p-4">
-        <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-xl max-h-[90vh] overflow-y-auto">
+        <div class="bg-white rounded-2xl max-w-2xl w-full p-6 shadow-xl max-h-[90vh] overflow-y-auto">
             <div class="flex justify-between items-center mb-4 border-b pb-3">
-                <h3 class="text-lg font-bold text-slate-900">Gestion des Groupes d'Exercices</h3>
+                <h3 class="text-lg font-bold text-slate-900">Gestion des Groupes et Sous-Catégories</h3>
                 <button onclick="fermerModalGroupes()" class="text-slate-400 hover:text-slate-600 text-xl font-bold">&times;</button>
             </div>
             
             <div class="mb-6 bg-slate-50 p-4 rounded-xl border border-slate-200">
-                <h4 class="text-sm font-semibold text-slate-700 mb-2">Créer un nouveau groupe</h4>
+                <h4 class="text-sm font-semibold text-slate-700 mb-2">Créer un nouveau groupe principal</h4>
                 <div class="flex gap-2">
-                    <input type="text" id="input-nom-groupe" placeholder="Ex: PSY0, Anglais..." class="flex-1 border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <input type="text" id="input-nom-groupe" placeholder="Ex: PSY1, Entraînement Semaine..." class="flex-1 border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
                     <button onclick="creerGroupe()" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700">Créer</button>
                 </div>
             </div>
 
-            <div id="liste-gestion-groupes" class="space-y-4">
+            <div id="liste-gestion-groupes" class="space-y-6">
                 <!-- Injecté par JS -->
             </div>
 
@@ -130,11 +130,9 @@
         </div>
     </div>
 
-    <!-- PANNEAU LATÉRAL DE DÉTAIL ÉLARGI (TIROIR TYPE PILOTEST) -->
+    <!-- PANNEAU LATÉRAL (TIROIR) -->
     <div id="drawer-detail" class="fixed inset-0 bg-black/50 hidden z-50 flex justify-end transition-opacity duration-300">
         <div class="bg-white w-full max-w-4xl h-full shadow-2xl flex flex-col overflow-y-auto transform transition-transform duration-300">
-            
-            <!-- En-tête du Tiroir -->
             <div class="p-6 border-b border-slate-200 flex justify-between items-center bg-white sticky top-0 z-10 shadow-sm">
                 <div>
                     <h2 id="drawer-titre-exercice" class="text-2xl font-bold text-slate-900">Nom de l'exercice</h2>
@@ -147,11 +145,7 @@
                     <button onclick="fermerDrawer()" class="text-slate-400 hover:text-slate-600 text-2xl font-bold p-2">&times;</button>
                 </div>
             </div>
-
-            <!-- Corps du Tiroir -->
             <div class="p-8 space-y-8 flex-1 bg-slate-50/50">
-                
-                <!-- Blocs Statistiques (Cartes du haut) -->
                 <div class="grid grid-cols-3 gap-6">
                     <div class="bg-white border border-slate-200/80 rounded-2xl p-5 text-center shadow-sm">
                         <div class="text-[11px] uppercase font-bold text-slate-400 tracking-wider mb-2">KD TOOLS</div>
@@ -169,32 +163,19 @@
                         <div id="drawer-date-record" class="text-[11px] text-slate-400 mt-1">meilleur score</div>
                     </div>
                 </div>
-
-                <!-- Graphique Barres : Régularité (Répartition des essais) -->
                 <div class="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-sm">
                     <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-1">Régularité des essais</h3>
                     <p id="drawer-sous-titre-regularite" class="text-xs text-slate-500 mb-4">Répartition par score</p>
-                    <div class="relative h-52 w-full">
-                        <canvas id="barChart"></canvas>
-                    </div>
+                    <div class="relative h-52 w-full"><canvas id="barChart"></canvas></div>
                 </div>
-
-                <!-- Graphique Ligne : Évolution -->
                 <div class="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-sm">
                     <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-4">Évolution depuis le début</h3>
-                    <div class="relative h-64 w-full">
-                        <canvas id="evolutionChart"></canvas>
-                    </div>
+                    <div class="relative h-64 w-full"><canvas id="evolutionChart"></canvas></div>
                 </div>
-
-                <!-- Historique textuel -->
                 <div class="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-sm">
                     <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-4">Tous les essais depuis le début</h3>
-                    <div id="drawer-liste-essais" class="space-y-2.5 max-h-56 overflow-y-auto pr-2">
-                        <!-- Injecté par JS -->
-                    </div>
+                    <div id="drawer-liste-essais" class="space-y-2.5 max-h-56 overflow-y-auto pr-2"></div>
                 </div>
-
             </div>
         </div>
     </div>

@@ -53,24 +53,24 @@ const tousLesExercices = [
 ];
 
 let statsGlobales = {};
-let groupesPersonnalisés = {}; 
+let groupesPersonnalisés = {}; // Format : { "NomGroupe": { exercices: [...], sousCategories: { "NomCat": ["Ex1"] } } }
 let groupeActif = "Tous";
 let evolutionChart = null;
 let barChart = null;
 let exerciceActuelDrawer = null;
+let miniCharts = {}; // Pour stocker les graphiques de droite
 
-// --- 3. CHARGEMENT DEPUIS LE CLOUD ---
+// --- 2. CHARGEMENT ---
 async function chargerDonnees() {
     tousLesExercices.forEach(ex => statsGlobales[ex] = { scores: [], dates: [], ids: [] });
 
-    // On s'assure de bien récupérer l'id de chaque ligne Supabase
     const { data: scoresData, error: scoresError } = await supabaseClient.from('scores').select('*').order('id', { ascending: true });
     if (!scoresError && scoresData) {
         scoresData.forEach(row => {
             if (statsGlobales[row.exercice]) {
                 statsGlobales[row.exercice].scores.push(row.score_stanine);
                 statsGlobales[row.exercice].dates.push(row.date_test);
-                statsGlobales[row.exercice].ids.push(row.id); // <--- C'est ici que l'ID unique est stocké
+                statsGlobales[row.exercice].ids.push(row.id);
             }
         });
     }
@@ -78,11 +78,18 @@ async function chargerDonnees() {
     const { data: groupesData, error: groupesError } = await supabaseClient.from('groupes').select('*');
     groupesPersonnalisés = {};
     if (!groupesError && groupesData) {
-        groupesData.forEach(g => groupesPersonnalisés[g.nom] = g.exercices);
+        groupesData.forEach(g => {
+            // Compatibilité ancienne structure (tableau) ou nouvelle (objet avec sous-categories)
+            if (Array.isArray(g.exercices)) {
+                groupesPersonnalisés[g.nom] = { exercices: g.exercices, sousCategories: {} };
+            } else {
+                groupesPersonnalisés[g.nom] = g.exercices; // Déjà au format objet
+            }
+        });
     }
 }
 
-// --- 4. SAUVEGARDE DES SCORES (MODIFIÉ : Ne rouvre plus le tiroir automatiquement) ---
+// --- 3. SAUVEGARDE ---
 async function enregistrerScore(scoreStanine) {
     const exerciceSelectionne = document.getElementById('select-exercice').value;
     if (!exerciceSelectionne) return;
@@ -100,9 +107,7 @@ async function enregistrerScore(scoreStanine) {
     message.classList.remove('hidden');
     setTimeout(() => message.classList.add('hidden'), 3000);
 
-    // On rafraîchit les bandeaux pour voir la moyenne et le dernier score se mettre à jour instantanément,
-    // MAIS on ne force plus l'ouverture du tiroir de droite !
-    genererBandeaux();
+    genererBandeauxEtGraphiquesGlobaux();
 }
 
 async function sauvegarderGroupesDansCloud() {
@@ -126,7 +131,7 @@ const getPointColor = (val) => {
     return '#3b82f6';
 };
 
-// --- 5. LOGIQUE D'INTERFACE PRINCIPALE ---
+// --- 4. INTERFACE ---
 function afficherNavigationGroupes() {
     const navContainer = document.getElementById('groupes-nav');
     if (!navContainer) return;
@@ -148,24 +153,27 @@ function afficherNavigationGroupes() {
 
     const labelActif = document.getElementById('label-groupe-actif');
     if(labelActif) labelActif.textContent = `Groupe : ${groupeActif}`;
+    
+    const titreDroite = document.getElementById('titre-groupe-droite');
+    if(titreDroite) titreDroite.textContent = groupeActif === 'Tous' ? 'Tous les exercices' : `Groupe : ${groupeActif}`;
 }
 
 function changerGroupe(nomGroupe) {
     groupeActif = nomGroupe;
     afficherNavigationGroupes();
     initialiserFormulaireSelect();
-    genererBandeaux();
+    genererBandeauxEtGraphiquesGlobaux();
 }
 
 function initFormulaire() {
     const zoneBoutons = document.getElementById('zone-boutons-stanine');
     if(!zoneBoutons) return;
-    zoneBoutons.innerHTML = '<span class="text-sm text-slate-500 font-medium mr-2 flex items-center">Score :</span>';
+    zoneBoutons.innerHTML = '<span class="text-xs text-slate-500 font-medium mr-1 flex items-center">Score :</span>';
     
     for (let i = 1; i <= 9; i++) {
         const btn = document.createElement('button');
         btn.textContent = i;
-        btn.className = "w-10 h-10 rounded text-white font-bold transition-transform hover:scale-110 active:scale-95 shadow-sm";
+        btn.className = "w-8 h-8 rounded text-white font-bold text-xs transition-transform hover:scale-110 active:scale-95 shadow-sm";
         btn.style.backgroundColor = getPointColor(i);
         btn.onclick = () => enregistrerScore(i);
         zoneBoutons.appendChild(btn);
@@ -190,7 +198,8 @@ function initialiserFormulaireSelect() {
 
     let exercicesDisponibles = tousLesExercices;
     if (groupeActif !== "Tous" && groupesPersonnalisés[groupeActif]) {
-        exercicesDisponibles = groupesPersonnalisés[groupeActif];
+        const g = groupesPersonnalisés[groupeActif];
+        exercicesDisponibles = Array.isArray(g.exercices) ? g.exercices : (g.exercices || []);
     }
 
     exercicesDisponibles.forEach(ex => {
@@ -204,70 +213,180 @@ function initialiserFormulaireSelect() {
     if(zoneBoutons) zoneBoutons.classList.add('opacity-30', 'pointer-events-none');
 }
 
-function genererBandeaux() {
+// Génération de la liste de gauche et de la grille de droite simultanément
+function genererBandeauxEtGraphiquesGlobaux() {
+    genererBandeauxGauche();
+    genererGrilleDroite();
+}
+
+// --- AFFICHAGE COLONNE DE GAUCHE (Bandeaux & Sous-Catégories) ---
+function genererBandeauxGauche() {
     const container = document.getElementById('exercices-list');
     if(!container) return;
     container.innerHTML = '';
 
-    let exercicesAffiches = tousLesExercices;
+    let exercicesBruts = tousLesExercices;
+    let sousCats = {};
+
     if (groupeActif !== "Tous" && groupesPersonnalisés[groupeActif]) {
-        exercicesAffiches = groupesPersonnalisés[groupeActif];
+        const g = groupesPersonnalisés[groupeActif];
+        exercicesBruts = Array.isArray(g.exercices) ? g.exercices : (g.exercices || []);
+        sousCats = g.sousCategories || {};
     }
 
-    if (exercicesAffiches.length === 0) {
-        container.innerHTML = `<div class="p-6 text-center text-slate-400 text-sm">Aucun exercice dans ce groupe pour le moment.</div>`;
+    if (exercicesBruts.length === 0) {
+        container.innerHTML = `<div class="p-6 text-center text-slate-400 text-xs">Aucun exercice dans ce groupe. Cliquez sur "Créer / Modifier les groupes" pour en ajouter.</div>`;
         return;
     }
 
-    exercicesAffiches.forEach(ex => {
-        const donnees = statsGlobales[ex] || { scores: [], dates: [], ids: [] };
-        const nbEssais = donnees.scores.length;
-        let moyenne = '-';
-        let dernier = '-';
-
-        if (nbEssais > 0) {
-            const somme = donnees.scores.reduce((a, b) => a + b, 0);
-            moyenne = Math.round(somme / nbEssais);
-            dernier = donnees.scores[nbEssais - 1];
+    // 1. Afficher d'abord les sous-catégories créées par l'utilisateur (avec leurs exercices)
+    const nomsCats = Object.keys(sousCats);
+    nomsCats.forEach(nomCat => {
+        const exDeLaCat = sousCats[nomCat] || [];
+        if (exDeLaCat.length > 0) {
+            // En-tête de sous-catégorie
+            container.innerHTML += `<div class="bg-slate-100 px-3 py-1.5 text-[11px] font-bold text-slate-600 uppercase tracking-wider border-y border-slate-200">📁 ${nomCat}</div>`;
+            exDeLaCat.forEach(ex => {
+                container.innerHTML += rendreLigneExercice(ex);
+            });
         }
+    });
 
-        const bgMoyenne = moyenne !== '-' ? getPointColor(moyenne) : '#f1f5f9';
-        const textMoyenne = moyenne !== '-' ? '#ffffff' : '#94a3b8';
-        const textDernier = dernier !== '-' ? getPointColor(dernier) : '#94a3b8';
+    // 2. Afficher les exercices restants qui ne sont dans aucune sous-catégorie
+    const tousExClasses = [];
+    Object.values(sousCats).forEach(liste => tousExClasses.push(...liste));
+    const exRestants = exercicesBruts.filter(ex => !tousExClasses.includes(ex));
 
-        let htmlCarres = '';
-        for (let i = 1; i <= 9; i++) {
-            const atteint = donnees.scores.includes(i);
-            const couleur = atteint ? getPointColor(i) : '#f1f5f9';
-            const textColor = atteint ? '#ffffff' : '#cbd5e1';
-            htmlCarres += `<div class="w-6 h-6 rounded flex items-center justify-center text-xs font-bold" style="background-color: ${couleur}; color: ${textColor}">${i}</div>`;
-        }
-
-        const html = `
-            <div onclick="ouvrirDrawer('${ex}')" class="grid grid-cols-12 gap-4 p-4 items-center border-l-4 border-transparent hover:border-blue-500 hover:bg-slate-50 transition-colors cursor-pointer border-b border-slate-100">
-                <div class="col-span-5 flex items-center gap-3">
-                    <span class="bg-indigo-100 text-indigo-600 text-xs font-bold px-2 py-1 rounded">PT</span>
-                    <div>
-                        <div class="font-semibold text-slate-800">${ex}</div>
-                        <div class="text-xs text-slate-500">${nbEssais} essai(s) au total</div>
-                    </div>
-                </div>
-                <div class="col-span-5 flex items-center justify-center gap-1">
-                    ${htmlCarres}
-                </div>
-                <div class="col-span-1 flex justify-center">
-                    <div class="w-8 h-8 rounded flex items-center justify-center font-bold shadow-sm" style="background-color: ${bgMoyenne}; color: ${textMoyenne}">${moyenne}</div>
-                </div>
-                <div class="col-span-1 flex justify-center">
-                    <div class="w-8 h-8 flex items-center justify-center font-bold text-lg" style="color: ${textDernier}">${dernier}</div>
-                </div>
-            </div>
-        `;
-        container.innerHTML += html;
+    if (exRestants.length > 0 && nomsCats.length > 0) {
+        container.innerHTML += `<div class="bg-slate-100 px-3 py-1.5 text-[11px] font-bold text-slate-600 uppercase tracking-wider border-y border-slate-200">📌 Autres exercices</div>`;
+    }
+    exRestants.forEach(ex => {
+        container.innerHTML += rendreLigneExercice(ex);
     });
 }
 
-// --- 6. GESTION DU PANNEAU LATÉRAL (TIROIR) ---
+function rendreLigneExercice(ex) {
+    const donnees = statsGlobales[ex] || { scores: [], dates: [], ids: [] };
+    const nbEssais = donnees.scores.length;
+    let moyenne = '-';
+    let dernier = '-';
+
+    if (nbEssais > 0) {
+        const somme = donnees.scores.reduce((a, b) => a + b, 0);
+        moyenne = Math.round(somme / nbEssais);
+        dernier = donnees.scores[nbEssais - 1];
+    }
+
+    const bgMoyenne = moyenne !== '-' ? getPointColor(moyenne) : '#f1f5f9';
+    const textMoyenne = moyenne !== '-' ? '#ffffff' : '#94a3b8';
+    const textDernier = dernier !== '-' ? getPointColor(dernier) : '#94a3b8';
+
+    let htmlCarres = '';
+    for (let i = 1; i <= 9; i++) {
+        const atteint = donnees.scores.includes(i);
+        const couleur = atteint ? getPointColor(i) : '#f1f5f9';
+        const textColor = atteint ? '#ffffff' : '#cbd5e1';
+        htmlCarres += `<div class="w-5 h-5 rounded flex items-center justify-center text-[10px] font-bold" style="background-color: ${couleur}; color: ${textColor}">${i}</div>`;
+    }
+
+    return `
+        <div onclick="ouvrirDrawer('${ex}')" class="grid grid-cols-12 gap-2 p-3 items-center hover:bg-slate-50 transition-colors cursor-pointer">
+            <div class="col-span-6 flex items-center gap-2">
+                <div>
+                    <div class="font-semibold text-xs text-slate-800">${ex}</div>
+                    <div class="text-[10px] text-slate-400">${nbEssais} essai(s)</div>
+                </div>
+            </div>
+            <div class="col-span-4 flex items-center justify-center gap-0.5">
+                ${htmlCarres}
+            </div>
+            <div class="col-span-1 flex justify-center">
+                <div class="w-6 h-6 rounded flex items-center justify-center text-xs font-bold shadow-sm" style="background-color: ${bgMoyenne}; color: ${textMoyenne}">${moyenne}</div>
+            </div>
+            <div class="col-span-1 flex justify-center">
+                <div class="w-6 h-6 flex items-center justify-center font-bold text-sm" style="color: ${textDernier}">${dernier}</div>
+            </div>
+        </div>
+    `;
+}
+
+// --- AFFICHAGE COLONNE DE DROITE (Grille de Mini-Courbes par exercice) ---
+function genererGrilleDroite() {
+    const grilleContainer = document.getElementById('grille-mini-courbes');
+    if (!grilleContainer) return;
+    grilleContainer.innerHTML = '';
+
+    // Détruire les anciens graphiques pour éviter les conflits mémoire
+    Object.values(miniCharts).forEach(chart => chart.destroy());
+    miniCharts = {};
+
+    let exercicesAffiches = tousLesExercices;
+    if (groupeActif !== "Tous" && groupesPersonnalisés[groupeActif]) {
+        const g = groupesPersonnalisés[groupeActif];
+        exercicesAffiches = Array.isArray(g.exercices) ? g.exercices : (g.exercices || []);
+    }
+
+    if (exercicesAffiches.length === 0) {
+        grilleContainer.innerHTML = `<p class="text-xs text-slate-400 col-span-2 text-center py-12">Aucun exercice à afficher dans ce groupe.</p>`;
+        return;
+    }
+
+    exercicesAffiches.forEach((ex, index) => {
+        const donnees = statsGlobales[ex] || { scores: [], dates: [] };
+        const nbEssais = donnees.scores.length;
+        const dernier = nbEssais > 0 ? donnees.scores[nbEssais - 1] : '-';
+        const couleurDernier = dernier !== '-' ? getPointColor(dernier) : '#94a3b8';
+
+        // Création de la carte pour chaque exercice (Format (1,1), (1,2)...)
+        const carteId = `mini-chart-${index}`;
+        const cardHtml = `
+            <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 shadow-2xs flex flex-col justify-between">
+                <div class="flex justify-between items-center mb-2">
+                    <span class="font-bold text-xs text-slate-700 truncate max-w-[70%]">${ex}</span>
+                    <span class="text-[11px] font-bold px-2 py-0.5 rounded text-white" style="background-color: ${couleurDernier}">Dernier : ${dernier}</span>
+                </div>
+                <div class="relative h-32 w-full">
+                    <canvas id="${carteId}"></canvas>
+                </div>
+            </div>
+        `;
+        grilleContainer.innerHTML += cardHtml;
+
+        // Générer le mini-graphique Chart.js après l'injection HTML
+        setTimeout(() => {
+            const canvasEl = document.getElementById(carteId);
+            if (canvasEl) {
+                const ctx = canvasEl.getContext('2d');
+                miniCharts[carteId] = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: donnees.dates,
+                        datasets: [{
+                            data: donnees.scores,
+                            borderColor: '#3b82f6',
+                            borderWidth: 2,
+                            tension: 0.1,
+                            pointBackgroundColor: context => getPointColor(context.raw),
+                            pointRadius: 4,
+                            pointHoverRadius: 6
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: { min: 1, max: 9, ticks: { stepSize: 2, font: { size: 9 } }, grid: { color: '#f1f5f9' } },
+                            x: { display: false } // Masquer les dates sur les mini-courbes pour faire propre
+                        },
+                        plugins: { legend: { display: false } }
+                    }
+                });
+            }
+        }, 50);
+    });
+}
+
+// --- 5. GESTION DU PANNEAU LATÉRAL (TIROIR) ---
 window.ouvrirDrawer = function(nomExercice) {
     exerciceActuelDrawer = nomExercice;
     document.getElementById('drawer-titre-exercice').textContent = nomExercice;
@@ -414,53 +533,31 @@ window.supprimerScore = async function(idScore, nomExercice) {
     if (!confirm("Voulez-vous vraiment supprimer cet essai ?")) return;
 
     const { error } = await supabaseClient.from('scores').delete().eq('id', idScore);
-
-    if (error) {
-        alert("❌ Erreur lors de la suppression : " + error.message);
-        console.error(error);
-        return;
-    }
+    if (error) { alert("❌ Erreur : " + error.message); return; }
 
     await chargerDonnees();
-    genererBandeaux();
+    genererBandeauxEtGraphiquesGlobaux();
     ouvrirDrawer(nomExercice);
 }
 
-// --- 7. FONCTION D'EXPORTATION EXCEL (CSV) ---
+// --- 6. EXPORT EXCEL ---
 window.exporterVersExcel = async function() {
     const { data: scoresData, error } = await supabaseClient.from('scores').select('*').order('id', { ascending: true });
-
-    if (error) {
-        alert("❌ Erreur lors de la récupération des données pour l'export.");
-        console.error(error);
-        return;
-    }
-
-    if (!scoresData || scoresData.length === 0) {
-        alert("⚠️ Aucun score à exporter pour le moment !");
-        return;
-    }
+    if (error || !scoresData || scoresData.length === 0) { alert("⚠️ Aucun score à exporter !"); return; }
 
     let csvContent = "data:text/csv;charset=utf-8,\uFEFF";
     csvContent += "Date;Exercice;Score Stanine\n";
+    scoresData.forEach(row => { csvContent += `${row.date_test};${row.exercice};${row.score_stanine}\n`; });
 
-    scoresData.forEach(row => {
-        csvContent += `${row.date_test};${row.exercice};${row.score_stanine}\n`;
-    });
-
-    const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    
-    const dateDuJour = new Date().toLocaleDateString('fr-FR').replace(/\//g, '_');
-    link.setAttribute("download", `suivi_cadets_pilotest_${dateDuJour}.csv`);
-    
+    link.setAttribute("href", encodeURI(csvContent));
+    link.setAttribute("download", `suivi_cadets_pilotest_${new Date().toLocaleDateString('fr-FR').replace(/\//g, '_')}.csv`);
     document.body.appendChild(link);
     link.click();
     link.remove();
 }
 
-// --- 8. MODALE DE GESTION DES GROUPES ---
+// --- 7. MODALE DE GESTION DES GROUPES ET SOUS-CATÉGORIES ---
 window.ouvrirModalGroupes = function() {
     document.getElementById('modal-groupes').classList.remove('hidden');
     rendreInterfaceGestionGroupes();
@@ -469,31 +566,90 @@ window.fermerModalGroupes = function() {
     document.getElementById('modal-groupes').classList.add('hidden');
     afficherNavigationGroupes();
     initialiserFormulaireSelect();
-    genererBandeaux();
+    genererBandeauxEtGraphiquesGlobaux();
 }
 window.creerGroupe = async function() {
     const input = document.getElementById('input-nom-groupe');
     const nom = input.value.trim();
     if (!nom) return;
     if (groupesPersonnalisés[nom]) { alert("Ce groupe existe déjà !"); return; }
-    groupesPersonnalisés[nom] = [];
+    
+    groupesPersonnalisés[nom] = { exercices: [], sousCategories: {} };
     await sauvegarderGroupesDansCloud();
     input.value = '';
     rendreInterfaceGestionGroupes();
 }
 window.supprimerGroupe = async function(nomGroupe) {
-    if (confirm(`Voulez-vous vraiment supprimer le groupe "${nomGroupe}" ?`)) {
+    if (confirm(`Voulez-vous supprimer le groupe "${nomGroupe}" ?`)) {
         delete groupesPersonnalisés[nomGroupe];
         if (groupeActif === nomGroupe) groupeActif = "Tous";
         await supprimerGroupeDansCloud(nomGroupe);
         rendreInterfaceGestionGroupes();
     }
 }
+
+// Gérer l'appartenance d'un exercice au groupe
 window.basculerExerciceDansGroupe = async function(nomGroupe, nomExercice) {
-    if (!groupesPersonnalisés[nomGroupe]) return;
-    const index = groupesPersonnalisés[nomGroupe].indexOf(nomExercice);
-    if (index > -1) groupesPersonnalisés[nomGroupe].splice(index, 1);
-    else groupesPersonnalisés[nomGroupe].push(nomExercice);
+    let g = groupesPersonnalisés[nomGroupe];
+    if (!g) return;
+    if (Array.isArray(g)) g = { exercices: g, sousCategories: {} };
+
+    const idx = g.exercices.indexOf(nomExercice);
+    if (idx > -1) {
+        g.exercices.splice(idx, 1);
+        // Retirer aussi des sous-catégories si présent
+        Object.keys(g.sousCategories).forEach(cat => {
+            const subIdx = g.sousCategories[cat].indexOf(nomExercice);
+            if (subIdx > -1) g.sousCategories[cat].splice(subIdx, 1);
+        });
+    } else {
+        g.exercices.push(nomExercice);
+    }
+    groupesPersonnalisés[nomGroupe] = g;
+    await sauvegarderGroupesDansCloud();
+    rendreInterfaceGestionGroupes();
+}
+
+// Créer une sous-catégorie dans un groupe
+window.creerSousCategorie = async function(nomGroupe) {
+    const input = document.getElementById(`input-sous-cat-${nomGroupe}`);
+    const nomCat = input.value.trim();
+    if (!nomCat) return;
+
+    let g = groupesPersonnalisés[nomGroupe];
+    if (!g.sousCategories) g.sousCategories = {};
+    if (g.sousCategories[nomCat]) { alert("Cette sous-catégorie existe déjà !"); return; }
+
+    g.sousCategories[nomCat] = [];
+    await sauvegarderGroupesDansCloud();
+    input.value = '';
+    rendreInterfaceGestionGroupes();
+}
+
+// Supprimer une sous-catégorie
+window.supprimerSousCategorie = async function(nomGroupe, nomCat) {
+    let g = groupesPersonnalisés[nomGroupe];
+    if (g && g.sousCategories) {
+        delete g.sousCategories[nomCat];
+        await sauvegarderGroupesDansCloud();
+        rendreInterfaceGestionGroupes();
+    }
+}
+
+// Assigner ou désassigner un exercice à une sous-catégorie
+window.basculerExerciceDansSousCat = async function(nomGroupe, nomCat, nomExercice) {
+    let g = groupesPersonnalisés[nomGroupe];
+    if (!g || !g.sousCategories || !g.sousCategories[nomCat]) return;
+
+    const list = g.sousCategories[nomCat];
+    const idx = list.indexOf(nomExercice);
+    if (idx > -1) {
+        list.splice(idx, 1);
+    } else {
+        // S'assurer qu'il est d'abord dans le groupe principal
+        if (!g.exercices.includes(nomExercice)) g.exercices.push(nomExercice);
+        list.push(nomExercice);
+    }
     await sauvegarderGroupesDansCloud();
     rendreInterfaceGestionGroupes();
 }
@@ -502,43 +658,93 @@ function rendreInterfaceGestionGroupes() {
     const container = document.getElementById('liste-gestion-groupes');
     if(!container) return;
     container.innerHTML = '';
+
     const clesGroupes = Object.keys(groupesPersonnalisés);
     if (clesGroupes.length === 0) {
         container.innerHTML = `<p class="text-sm text-slate-400 text-center py-4">Aucun groupe personnalisé pour l'instant.</p>`;
         return;
     }
+
     clesGroupes.forEach(nomGroupe => {
-        const exercicesDuGroupe = groupesPersonnalisés[nomGroupe];
-        let htmlExercices = '';
+        let g = groupesPersonnalisés[nomGroupe];
+        if (Array.isArray(g)) g = { exercices: g, sousCategories: {} };
+        const exercicesDuGroupe = g.exercices || [];
+        const sousCats = g.sousCategories || {};
+
+        let htmlExercicesDispos = '';
         tousLesExercices.forEach(ex => {
             const estInclus = exercicesDuGroupe.includes(ex);
-            htmlExercices += `
+            htmlExercicesDispos += `
                 <label class="flex items-center gap-2 text-xs text-slate-700 bg-white p-1.5 rounded border border-slate-200 cursor-pointer hover:bg-blue-50">
                     <input type="checkbox" ${estInclus ? 'checked' : ''} onchange="basculerExerciceDansGroupe('${nomGroupe}', '${ex}')" class="rounded text-blue-600 focus:ring-blue-500">
                     <span class="truncate">${ex}</span>
                 </label>
             `;
         });
-        container.innerHTML += `
-            <div class="border border-slate-200 rounded-xl p-4 bg-slate-50">
-                <div class="flex justify-between items-center mb-3">
-                    <h5 class="font-bold text-sm text-slate-800">📁 ${nomGroupe} (${exercicesDuGroupe.length} tests)</h5>
-                    <button onclick="supprimerGroupe('${nomGroupe}')" class="text-xs text-red-500 hover:text-red-700 font-medium">Supprimer</button>
+
+        // Rendu des sous-catégories dans la modale
+        let htmlSousCats = '';
+        Object.keys(sousCats).forEach(nomCat => {
+            const exDeLaCat = sousCats[nomCat] || [];
+            let htmlCheckExCat = '';
+            
+            // On ne propose de cocher que les exercices qui font partie du groupe
+            exercicesDuGroupe.forEach(ex => {
+                const dansCat = exDeLaCat.includes(ex);
+                htmlCheckExCat += `
+                    <label class="flex items-center gap-2 text-xs text-slate-600 bg-white p-1 rounded border border-slate-100 cursor-pointer">
+                        <input type="checkbox" ${dansCat ? 'checked' : ''} onchange="basculerExerciceDansSousCat('${nomGroupe}', '${nomCat}', '${ex}')" class="rounded text-indigo-600">
+                        <span class="truncate">${ex}</span>
+                    </label>
+                `;
+            });
+
+            htmlSousCats += `
+                <div class="mt-3 bg-white p-3 rounded-xl border border-indigo-100">
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="font-bold text-xs text-indigo-900">📂 ${nomCat}</span>
+                        <button onclick="supprimerSousCategorie('${nomGroupe}', '${nomCat}')" class="text-[10px] text-red-500 hover:text-red-700">Supprimer</button>
+                    </div>
+                    <div class="grid grid-cols-2 gap-1.5 max-h-32 overflow-y-auto p-1 bg-slate-50 rounded">
+                        ${htmlCheckExCat || '<span class="text-[10px] text-slate-400 col-span-2">Cochez d\'abord des exercices dans le groupe ci-dessus.</span>'}
+                    </div>
                 </div>
-                <div class="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto p-1 bg-slate-100 rounded-lg">
-                    ${htmlExercices}
+            `;
+        });
+
+        container.innerHTML += `
+            <div class="border border-slate-200 rounded-xl p-4 bg-slate-50 space-y-4">
+                <div class="flex justify-between items-center border-b pb-2">
+                    <h5 class="font-bold text-sm text-slate-800">📁 Groupe : ${nomGroupe}</h5>
+                    <button onclick="supprimerGroupe('${nomGroupe}')" class="text-xs text-red-500 hover:text-red-700 font-medium">Supprimer le groupe</button>
+                </div>
+                
+                <div>
+                    <span class="text-xs font-semibold text-slate-600 block mb-1">1. Choisir les tests de ce groupe :</span>
+                    <div class="grid grid-cols-2 gap-2 max-h-36 overflow-y-auto p-1.5 bg-slate-100 rounded-lg">
+                        ${htmlExercicesDispos}
+                    </div>
+                </div>
+
+                <div class="border-t pt-3">
+                    <span class="text-xs font-semibold text-slate-600 block mb-1">2. Créer des sous-catégories (ex: Mémorisation, Spatial...) :</span>
+                    <div class="flex gap-2 mb-2">
+                        <input type="text" id="input-sous-cat-${nomGroupe}" placeholder="Nom de la sous-catégorie..." class="flex-1 border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <button onclick="creerSousCategorie('${nomGroupe}')" class="bg-indigo-600 text-white px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-indigo-700">Ajouter</button>
+                    </div>
+                    ${htmlSousCats}
                 </div>
             </div>
         `;
     });
 }
 
-// --- 9. DÉMARRAGE DE L'APPLICATION ---
+// --- DÉMARRAGE ---
 async function demarrerDashboard() {
     await chargerDonnees();
     afficherNavigationGroupes();
     initFormulaire();
-    genererBandeaux();
+    genererBandeauxEtGraphiquesGlobaux();
 }
 
 demarrerDashboard();
