@@ -246,7 +246,7 @@ function genererBandeauxGauche() {
     }
 }
 
-// --- RENDU DIRECT DES CATÉGORIES ET DE LEURS EXERCICES DANS LE BANDEAU ---
+// --- RENDU DIRECT DES CATÉGORIES ET DE LA SECTION "AUTRES TESTS" DANS LE BANDEAU ---
 function renderCategoriesDirectementDansBandeau() {
     const container = document.getElementById('conteneur-categories-avec-exercices');
     if (!container) return;
@@ -260,14 +260,15 @@ function renderCategoriesDirectementDansBandeau() {
     const exercicesDuGroupe = g.exercices || [];
     const nomsCats = Object.keys(sousCats);
 
-    if (nomsCats.length === 0) {
+    if (nomsCats.length === 0 && exercicesDuGroupe.length === 0) {
         container.innerHTML = `
             <div class="text-center py-6 text-slate-400 text-xs bg-slate-50 rounded-xl border border-dashed border-slate-200">
-                Aucune catégorie créée pour ce groupe.<br>Cliquez sur <strong>"⚙️ Éditer / Créer"</strong> ci-dessus pour en ajouter.
+                Aucun exercice dans ce groupe.<br>Cliquez sur <strong>"Gérer les Groupes"</strong> en haut pour en ajouter.
             </div>`;
         return;
     }
 
+    // 1. Afficher chaque catégorie et ses exercices
     nomsCats.forEach(nomCat => {
         const exList = (sousCats[nomCat] || []).filter(ex => exercicesDuGroupe.includes(ex));
         
@@ -294,6 +295,31 @@ function renderCategoriesDirectementDansBandeau() {
             </div>
         `;
     });
+
+    // 2. Calculer et afficher le bloc "Autres tests" pour les exercices du groupe non assignés à une catégorie (anti-doublons)
+    const tousExClasses = [];
+    Object.values(sousCats).forEach(liste => tousExClasses.push(...liste));
+    const exercicesNonClasses = exercicesDuGroupe.filter(ex => !tousExClasses.includes(ex));
+
+    if (exercicesNonClasses.length > 0 || nomsCats.length === 0) {
+        let htmlAutresExercices = '';
+        exercicesNonClasses.forEach(ex => {
+            htmlAutresExercices += rendreLigneExerciceCompacte(ex);
+        });
+
+        container.innerHTML += `
+            <div class="bg-slate-50 border border-slate-200 rounded-xl overflow-hidden shadow-2xs mt-4">
+                <div class="bg-slate-100 px-4 py-2.5 flex justify-between items-center border-b border-slate-200">
+                    <span class="font-bold text-xs text-slate-700 uppercase tracking-wider flex items-center gap-2">
+                        📌 Autres tests <span class="text-[10px] text-slate-400 font-normal">(${exercicesNonClasses.length} test(s))</span>
+                    </span>
+                </div>
+                <div class="divide-y divide-slate-100 bg-white">
+                    ${htmlAutresExercices || '<div class="p-3 text-[11px] text-slate-400 italic text-center">Tous les tests du groupe sont classés dans des catégories !</div>'}
+                </div>
+            </div>
+        `;
+    }
 }
 
 // Ligne d'exercice compacte
