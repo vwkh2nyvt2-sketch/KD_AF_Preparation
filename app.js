@@ -15,20 +15,26 @@ const tousLesExercices = [
     "Test des compteurs", "Voiture séquentiel"
 ];
 
-// Variables Globales
 let statsGlobales = {};
 let groupesPersonnalisés = {}; 
 let groupeActif = "Tous";
 let evolutionChart = null;
 
-// --- 3. CHARGEMENT DEPUIS LE CLOUD ---
+// --- 3. CHARGEMENT DEPUIS LE CLOUD (AVEC DÉTECTION D'ERREUR) ---
 async function chargerDonnees() {
-    // Initialisation des structures vides
     tousLesExercices.forEach(ex => statsGlobales[ex] = { scores: [], dates: [] });
 
-    // A. Récupération des scores
+    console.log("Tentative de connexion à Supabase...");
+
     const { data: scoresData, error: scoresError } = await supabaseClient.from('scores').select('*').order('id', { ascending: true });
-    if (!scoresError && scoresData) {
+    
+    if (scoresError) {
+        console.error("Erreur critique (Scores) :", scoresError);
+        alert(`❌ Erreur de connexion Supabase (Scores) : ${scoresError.message}`);
+        return;
+    }
+
+    if (scoresData) {
         scoresData.forEach(row => {
             if (statsGlobales[row.exercice]) {
                 statsGlobales[row.exercice].scores.push(row.score_stanine);
@@ -37,13 +43,18 @@ async function chargerDonnees() {
         });
     }
 
-    // B. Récupération des groupes
     const { data: groupesData, error: groupesError } = await supabaseClient.from('groupes').select('*');
-    if (!groupesError && groupesData && groupesData.length > 0) {
+    
+    if (groupesError) {
+        console.error("Erreur critique (Groupes) :", groupesError);
+        alert(`❌ Erreur de connexion Supabase (Groupes) : ${groupesError.message}`);
+        return;
+    }
+
+    if (groupesData && groupesData.length > 0) {
         groupesPersonnalisés = {};
         groupesData.forEach(g => groupesPersonnalisés[g.nom] = g.exercices);
     } else {
-        // Groupes par défaut si la base est vide
         groupesPersonnalisés = {
             "PSY0": ["Calcul mental 1", "Calcul mental 2", "Calcul mental 3", "Calcul mental 4", "Mathématiques"],
             "PSY1": ["Airways", "Angles", "Attention 1", "Patrons de cubes - PSY1"]
@@ -52,25 +63,29 @@ async function chargerDonnees() {
     }
 }
 
-// --- 4. SAUVEGARDE DANS LE CLOUD ---
+// --- 4. SAUVEGARDE DANS LE CLOUD (AVEC DÉTECTION D'ERREUR) ---
 async function enregistrerScore(scoreStanine) {
     const exerciceSelectionne = document.getElementById('select-exercice').value;
     if (!exerciceSelectionne) return;
 
     const dateJour = new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' });
 
-    // Mise à jour de l'affichage local immédiatement pour la fluidité
     statsGlobales[exerciceSelectionne].scores.push(scoreStanine);
     statsGlobales[exerciceSelectionne].dates.push(dateJour);
     
-    // Envoi silencieux vers Supabase
-    await supabaseClient.from('scores').insert([
+    // Envoi vers Supabase et capture d'erreur
+    const { error } = await supabaseClient.from('scores').insert([
         { date_test: dateJour, exercice: exerciceSelectionne, score_stanine: scoreStanine }
     ]);
 
-    const message = document.getElementById('message-confirmation');
-    message.classList.remove('hidden');
-    setTimeout(() => message.classList.add('hidden'), 3000);
+    if (error) {
+        console.error("Erreur d'insertion :", error);
+        alert(`❌ Impossible de sauvegarder dans le Cloud : ${error.message}`);
+    } else {
+        const message = document.getElementById('message-confirmation');
+        message.classList.remove('hidden');
+        setTimeout(() => message.classList.add('hidden'), 3000);
+    }
 
     genererBandeaux();
     afficherGraphique(exerciceSelectionne);
@@ -82,7 +97,11 @@ async function sauvegarderGroupesDansCloud() {
         exercices: groupesPersonnalisés[nom]
     }));
     if (formattedGroups.length > 0) {
-        await supabaseClient.from('groupes').upsert(formattedGroups);
+        const { error } = await supabaseClient.from('groupes').upsert(formattedGroups);
+        if (error) {
+            console.error("Erreur de sauvegarde des groupes :", error);
+            alert(`❌ Erreur de sauvegarde des groupes : ${error.message}`);
+        }
     }
 }
 
