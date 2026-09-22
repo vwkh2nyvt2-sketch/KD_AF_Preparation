@@ -63,13 +63,14 @@ let exerciceActuelDrawer = null;
 async function chargerDonnees() {
     tousLesExercices.forEach(ex => statsGlobales[ex] = { scores: [], dates: [], ids: [] });
 
+    // On s'assure de bien récupérer l'id de chaque ligne Supabase
     const { data: scoresData, error: scoresError } = await supabaseClient.from('scores').select('*').order('id', { ascending: true });
     if (!scoresError && scoresData) {
         scoresData.forEach(row => {
             if (statsGlobales[row.exercice]) {
                 statsGlobales[row.exercice].scores.push(row.score_stanine);
                 statsGlobales[row.exercice].dates.push(row.date_test);
-                statsGlobales[row.exercice].ids.push(row.id);
+                statsGlobales[row.exercice].ids.push(row.id); // <--- C'est ici que l'ID unique est stocké
             }
         });
     }
