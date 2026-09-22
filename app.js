@@ -130,7 +130,7 @@ const getColorForClass = (num) => {
         2: '#E84E0F',
         3: '#F18700',
         4: '#FBBA00',
-        5: '#FFED00',
+        5: '#ffe600ef',
         6: '#D3D800',
         7: '#02B74B',
         8: '#009ED4',
