@@ -82,7 +82,7 @@ async function chargerDonnees() {
     }
 }
 
-// --- 4. SAUVEGARDE DES SCORES ---
+// --- 4. SAUVEGARDE DES SCORES (MODIFIÉ : Ne rouvre plus le tiroir automatiquement) ---
 async function enregistrerScore(scoreStanine) {
     const exerciceSelectionne = document.getElementById('select-exercice').value;
     if (!exerciceSelectionne) return;
@@ -100,10 +100,9 @@ async function enregistrerScore(scoreStanine) {
     message.classList.remove('hidden');
     setTimeout(() => message.classList.add('hidden'), 3000);
 
+    // On rafraîchit les bandeaux pour voir la moyenne et le dernier score se mettre à jour instantanément,
+    // MAIS on ne force plus l'ouverture du tiroir de droite !
     genererBandeaux();
-    if (exerciceActuelDrawer === exerciceSelectionne) {
-        ouvrirDrawer(exerciceSelectionne);
-    }
 }
 
 async function sauvegarderGroupesDansCloud() {
