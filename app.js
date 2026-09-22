@@ -98,7 +98,7 @@ async function enregistrerScore(scoreStanine) {
     statsGlobales[exerciceSelectionne].scores.push(scoreStanine);
     statsGlobales[exerciceSelectionne].dates.push(dateJour);
     
-    await supabaseClient.from('scores'].insert([
+    await supabaseClient.from('scores').insert([
         { date_test: dateJour, exercice: exerciceSelectionne, score_stanine: scoreStanine }
     ]);
 
