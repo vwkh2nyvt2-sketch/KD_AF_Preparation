@@ -322,7 +322,7 @@ function renderCategoriesDirectementDansBandeau() {
     }
 }
 
-// Ligne d'exercice compacte avec les 30 derniers résultats au milieu
+// Ligne d'exercice compacte affichant les 20 derniers résultats au milieu
 function rendreLigneExerciceCompacte(ex) {
     const donnees = statsGlobales[ex] || { scores: [], dates: [], ids: [] };
     const nbEssais = donnees.scores.length;
@@ -339,15 +339,16 @@ function rendreLigneExerciceCompacte(ex) {
     const textMoyenne = moyenne !== '-' ? '#ffffff' : '#94a3b8';
     const textDernier = dernier !== '-' ? getPointColor(dernier) : '#94a3b8';
 
-    const scoresRecents = donnees.scores.slice(-30);
-    let html30Derniers = '';
+    // Prendre les 20 derniers scores (ou tous si moins de 20)
+    const scoresRecents = donnees.scores.slice(-20);
+    let html20Derniers = '';
     
     if (scoresRecents.length === 0) {
-        html30Derniers = `<span class="text-[10px] text-slate-400 italic">Aucun essai</span>`;
+        html20Derniers = `<span class="text-[10px] text-slate-400 italic">Aucun essai</span>`;
     } else {
         scoresRecents.forEach(score => {
             const couleur = getPointColor(score);
-            html30Derniers += `<div class="w-5 h-5 rounded flex items-center justify-center text-[10px] font-bold text-white shadow-2xs" style="background-color: ${couleur}">${score}</div>`;
+            html20Derniers += `<div class="w-5 h-5 rounded flex items-center justify-center text-[10px] font-bold text-white shadow-2xs" style="background-color: ${couleur}">${score}</div>`;
         });
     }
 
@@ -360,7 +361,7 @@ function rendreLigneExerciceCompacte(ex) {
                 </div>
             </div>
             <div class="col-span-6 flex items-center justify-center gap-1 flex-wrap max-h-16 overflow-hidden px-2">
-                ${html30Derniers}
+                ${html20Derniers}
             </div>
             <div class="col-span-1 flex justify-center">
                 <div class="w-6 h-6 rounded flex items-center justify-center text-xs font-bold shadow-sm" style="background-color: ${bgMoyenne}; color: ${textMoyenne}">${moyenne}</div>
