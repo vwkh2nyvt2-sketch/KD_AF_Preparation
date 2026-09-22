@@ -59,9 +59,9 @@ let evolutionChart = null;
 let barChart = null;
 let exerciceActuelDrawer = null;
 
-// --- 2. CHARGEMENT ---
+// --- 3. CHARGEMENT DEPUIS LE CLOUD ---
 async function chargerDonnees() {
-    tousLesExercices.forEach(ex => statsGlobales[ex] = { scores: [], dates: [] });
+    tousLesExercices.forEach(ex => statsGlobales[ex] = { scores: [], dates: [], ids: [] });
 
     const { data: scoresData, error: scoresError } = await supabaseClient.from('scores').select('*').order('id', { ascending: true });
     if (!scoresError && scoresData) {
@@ -69,6 +69,7 @@ async function chargerDonnees() {
             if (statsGlobales[row.exercice]) {
                 statsGlobales[row.exercice].scores.push(row.score_stanine);
                 statsGlobales[row.exercice].dates.push(row.date_test);
+                statsGlobales[row.exercice].ids.push(row.id);
             }
         });
     }
@@ -80,7 +81,7 @@ async function chargerDonnees() {
     }
 }
 
-// --- 3. SAUVEGARDE ---
+// --- 4. SAUVEGARDE DES SCORES ---
 async function enregistrerScore(scoreStanine) {
     const exerciceSelectionne = document.getElementById('select-exercice').value;
     if (!exerciceSelectionne) return;
@@ -125,7 +126,7 @@ const getPointColor = (val) => {
     return '#3b82f6';
 };
 
-// --- 4. INTERFACE ---
+// --- 5. LOGIQUE D'INTERFACE PRINCIPALE ---
 function afficherNavigationGroupes() {
     const navContainer = document.getElementById('groupes-nav');
     if (!navContainer) return;
@@ -219,7 +220,7 @@ function genererBandeaux() {
     }
 
     exercicesAffiches.forEach(ex => {
-        const donnees = statsGlobales[ex] || { scores: [], dates: [] };
+        const donnees = statsGlobales[ex] || { scores: [], dates: [], ids: [] };
         const nbEssais = donnees.scores.length;
         let moyenne = '-';
         let dernier = '-';
@@ -266,13 +267,13 @@ function genererBandeaux() {
     });
 }
 
-// --- 5. PANNEAU LATÉRAL ---
+// --- 6. GESTION DU PANNEAU LATÉRAL (TIROIR) ---
 window.ouvrirDrawer = function(nomExercice) {
     exerciceActuelDrawer = nomExercice;
     document.getElementById('drawer-titre-exercice').textContent = nomExercice;
     document.getElementById('drawer-detail').classList.remove('hidden');
 
-    const donnees = statsGlobales[nomExercice] || { scores: [], dates: [] };
+    const donnees = statsGlobales[nomExercice] || { scores: [], dates: [], ids: [] };
     const nbEssais = donnees.scores.length;
 
     document.getElementById('drawer-sous-titre').textContent = `Exercice Pilotest • ${nbEssais} essai(s) au total`;
@@ -384,7 +385,7 @@ function rendreListeEssais(donnees) {
     const container = document.getElementById('drawer-liste-essais');
     container.innerHTML = '';
 
-    if (donnees.scores.length === 0) {
+    if (!donnees.scores || donnees.scores.length === 0) {
         container.innerHTML = `<p class="text-xs text-slate-400 text-center py-4">Aucun essai enregistré pour cet exercice.</p>`;
         return;
     }
@@ -392,18 +393,74 @@ function rendreListeEssais(donnees) {
     for (let i = donnees.scores.length - 1; i >= 0; i--) {
         const score = donnees.scores[i];
         const date = donnees.dates[i];
+        const idScore = donnees.ids[i];
         const couleur = getPointColor(score);
 
         container.innerHTML += `
             <div class="flex justify-between items-center bg-slate-50 border border-slate-100 p-3 rounded-xl text-xs shadow-2xs">
                 <span class="text-slate-500 font-medium">Essai du ${date}</span>
-                <span class="font-bold px-2.5 py-1 rounded-lg text-white" style="background-color: ${couleur}">Stanine ${score}</span>
+                <div class="flex items-center gap-3">
+                    <span class="font-bold px-2.5 py-1 rounded-lg text-white" style="background-color: ${couleur}">Stanine ${score}</span>
+                    <button onclick="supprimerScore(${idScore}, '${exerciceActuelDrawer}')" class="text-slate-400 hover:text-red-600 font-bold p-1 transition-colors" title="Supprimer cet essai">
+                        🗑️
+                    </button>
+                </div>
             </div>
         `;
     }
 }
 
-// --- 6. MODALE GROUPES ---
+window.supprimerScore = async function(idScore, nomExercice) {
+    if (!confirm("Voulez-vous vraiment supprimer cet essai ?")) return;
+
+    const { error } = await supabaseClient.from('scores').delete().eq('id', idScore);
+
+    if (error) {
+        alert("❌ Erreur lors de la suppression : " + error.message);
+        console.error(error);
+        return;
+    }
+
+    await chargerDonnees();
+    genererBandeaux();
+    ouvrirDrawer(nomExercice);
+}
+
+// --- 7. FONCTION D'EXPORTATION EXCEL (CSV) ---
+window.exporterVersExcel = async function() {
+    const { data: scoresData, error } = await supabaseClient.from('scores').select('*').order('id', { ascending: true });
+
+    if (error) {
+        alert("❌ Erreur lors de la récupération des données pour l'export.");
+        console.error(error);
+        return;
+    }
+
+    if (!scoresData || scoresData.length === 0) {
+        alert("⚠️ Aucun score à exporter pour le moment !");
+        return;
+    }
+
+    let csvContent = "data:text/csv;charset=utf-8,\uFEFF";
+    csvContent += "Date;Exercice;Score Stanine\n";
+
+    scoresData.forEach(row => {
+        csvContent += `${row.date_test};${row.exercice};${row.score_stanine}\n`;
+    });
+
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    
+    const dateDuJour = new Date().toLocaleDateString('fr-FR').replace(/\//g, '_');
+    link.setAttribute("download", `suivi_cadets_pilotest_${dateDuJour}.csv`);
+    
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+}
+
+// --- 8. MODALE DE GESTION DES GROUPES ---
 window.ouvrirModalGroupes = function() {
     document.getElementById('modal-groupes').classList.remove('hidden');
     rendreInterfaceGestionGroupes();
@@ -476,49 +533,12 @@ function rendreInterfaceGestionGroupes() {
     });
 }
 
-// --- DÉMARRAGE ---
+// --- 9. DÉMARRAGE DE L'APPLICATION ---
 async function demarrerDashboard() {
     await chargerDonnees();
     afficherNavigationGroupes();
     initFormulaire();
     genererBandeaux();
 }
+
 demarrerDashboard();
-
-// --- FONCTION D'EXPORTATION EXCEL (CSV) ---
-window.exporterVersExcel = async function() {
-    // Récupérer tous les scores directement depuis Supabase pour être sûr d'avoir l'historique complet
-    const { data: scoresData, error } = await supabaseClient.from('scores').select('*').order('id', { ascending: true });
-
-    if (error) {
-        alert("❌ Erreur lors de la récupération des données pour l'export.");
-        console.error(error);
-        return;
-    }
-
-    if (!scoresData || scoresData.length === 0) {
-        alert("⚠️ Aucun score à exporter pour le moment !");
-        return;
-    }
-
-    // Créer l'en-tête du fichier CSV (séparé par des points-virgules pour Excel en français)
-    let csvContent = "data:text/csv;charset=utf-8,\uFEFF"; // \uFEFF pour forcer l'encodage UTF-8 sous Excel
-    csvContent += "Date;Exercice;Score Stanine\n";
-
-    // Ajouter chaque ligne de score
-    scoresData.forEach(row => {
-        csvContent += `${row.date_test};${row.exercice};${row.score_stanine}\n`;
-    });
-
-    // Créer un lien de téléchargement invisible
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    
-    const dateDuJour = new Date().toLocaleDateString('fr-FR').replace(/\//g, '_');
-    link.setAttribute("download", `suivi_cadets_pilotest_${dateDuJour}.csv`);
-    
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-}
