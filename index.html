@@ -3,30 +3,25 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Suivi Pilotest - Cadets</title>
-    <!-- Tailwind CSS -->
+    <title>Suivi Pilotest - Cadets AF</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <!-- Supabase JS -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link rel="stylesheet" href="style.css">
-    <link rel="icon" type="image/png" href="favicon.png">
 </head>
 <body class="bg-slate-50 text-slate-800 font-sans min-h-screen pb-12">
     
-    <!-- Navbar -->
-    <nav class="bg-white border-b border-slate-200 px-6 py-3 flex items-center justify-between mb-6 shadow-sm">
-        <div class="flex items-center gap-6">
-            <div class="font-bold text-xl tracking-tighter text-blue-900">✈️ KD_AF_Preparation ✈️</div>
-            <div class="flex gap-4 text-sm font-medium text-slate-500">
-                <a href="#" class="text-blue-600 border-b-2 border-blue-600 pb-1">Suivi de Performances</a>
+    <!-- Navbar avec système d'onglets -->
+    <nav class="bg-white border-b border-slate-200 px-6 py-3 flex items-center justify-between mb-6 shadow-sm sticky top-0 z-40">
+        <div class="flex items-center gap-8">
+            <div class="font-bold text-xl tracking-tighter text-blue-900">✈️ KD_AF_Preparation</div>
+            <div class="flex gap-6 text-sm font-semibold text-slate-500 mt-1">
+                <button id="onglet-suivi" onclick="changerOnglet('suivi')" class="text-blue-600 border-b-2 border-blue-600 pb-1 transition-colors">Suivi de Performances</button>
+                <button id="onglet-astuces" onclick="changerOnglet('astuces')" class="hover:text-blue-600 border-b-2 border-transparent pb-1 transition-colors">Aides & Astuces</button>
             </div>
         </div>
-
         <div>
             <button onclick="exporterVersExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-4 py-2.5 rounded-xl shadow-sm transition-colors flex items-center gap-2">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
                 Exporter vers Excel
             </button>
         </div>
@@ -34,208 +29,107 @@
 
     <main class="max-w-[98%] mx-auto px-4">
         
-        <!-- Barre de sélection des Groupes -->
-        <div class="flex flex-wrap justify-between items-center mb-6 gap-4 bg-white p-4 rounded-xl shadow-sm border border-slate-200">
-            <div id="groupes-nav" class="flex flex-wrap gap-2 items-center">
-                <!-- Injecté par JavaScript -->
+        <!-- ========================================== -->
+        <!-- VUE 1 : SUIVI DES PERFORMANCES (Existant)  -->
+        <!-- ========================================== -->
+        <div id="vue-suivi" class="block">
+            <!-- Barre de sélection des Groupes -->
+            <div class="flex flex-wrap justify-between items-center mb-6 gap-4 bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+                <div id="groupes-nav" class="flex flex-wrap gap-2 items-center">
+                    <!-- Injecté par JavaScript -->
+                </div>
+                <button onclick="ouvrirModalGroupes()" class="text-sm font-medium text-blue-600 hover:text-blue-800 bg-blue-50 px-3 py-1.5 rounded-lg transition-colors">
+                    ⚙️ Gérer les Groupes
+                </button>
             </div>
-            <button onclick="ouvrirModalGroupes()" class="text-sm font-medium text-blue-600 hover:text-blue-800 flex items-center gap-1.5 bg-blue-50 px-3 py-1.5 rounded-lg transition-colors">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
-                Gérer les Groupes
-            </button>
-        </div>
 
-        <!-- CONTENEUR GLOBAL EN 2 COLONNES : 3/4 pour la gauche, 1/4 pour la droite -->
-        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-            
-            <!-- COLONNE GAUCHE (75% de la page) -->
-            <div class="lg:col-span-9 space-y-6">
-                
-                <!-- Encadré d'ajout de test compact -->
-                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
-                    <div class="flex flex-col gap-3">
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                <!-- COLONNE GAUCHE (75%) -->
+                <div class="lg:col-span-9 space-y-6">
+                    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 flex flex-col gap-3">
                         <div class="flex items-center justify-between">
-                            <h2 class="text-sm font-semibold text-slate-800 flex items-center gap-1.5">
-                                <svg class="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
-                                Ajouter un test :
-                            </h2>
-                            <span id="label-groupe-actif" class="text-[11px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-normal">Groupe : Tous</span>
+                            <h2 class="text-sm font-semibold text-slate-800 flex items-center gap-1.5">➕ Ajouter un test :</h2>
+                            <span id="label-groupe-actif" class="text-[11px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full">Groupe : Tous</span>
                         </div>
-                        
-                        <div class="w-full">
-                            <select id="select-exercice" class="w-full border border-slate-300 rounded-lg p-2 text-xs font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer appearance-none bg-slate-50">
-                                <option value="">-- Sélectionner un test --</option>
-                            </select>
-                        </div>
-
+                        <select id="select-exercice" class="w-full border border-slate-300 rounded-lg p-2 text-xs font-medium text-slate-700 bg-slate-50 cursor-pointer focus:ring-2 focus:ring-blue-500">
+                            <option value="">-- Sélectionner un test --</option>
+                        </select>
                         <div id="zone-boutons-stanine" class="flex flex-wrap gap-1 opacity-30 pointer-events-none transition-opacity duration-300">
                             <span class="text-xs text-slate-500 font-medium mr-1 flex items-center">Score :</span>
                         </div>
+                        <p id="message-confirmation" class="text-green-600 text-xs font-medium text-center hidden mt-1">✅ Score enregistré !</p>
                     </div>
-                    <p id="message-confirmation" class="text-green-600 text-xs font-medium mt-2 text-center hidden">✅ Score enregistré avec succès !</p>
+
+                    <div id="bandeau-gestion-categories" class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 hidden">
+                        <div class="flex items-center justify-between mb-4 border-b pb-3">
+                            <h3 class="text-sm font-semibold text-slate-800">📂 Gérer les catégories</h3>
+                            <button onclick="ouvrirModalCategories()" class="text-xs font-medium text-indigo-600 bg-indigo-50 px-3 py-1.5 rounded-lg">⚙️ Éditer / Créer</button>
+                        </div>
+                        <div id="conteneur-categories-avec-exercices" class="space-y-4"></div>
+                    </div>
+
+                    <div id="fallback-liste-tous" class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                        <div class="grid grid-cols-12 gap-2 p-3 border-b border-slate-200 text-xs font-semibold text-slate-500 uppercase tracking-wider bg-slate-50">
+                            <div class="col-span-4">Exercice</div>
+                            <div class="col-span-6 text-center">20 derniers résultats</div>
+                            <div class="col-span-1 text-center">Moy</div>
+                            <div class="col-span-1 text-center">Dern</div>
+                        </div>
+                        <div id="exercices-list" class="divide-y divide-slate-100 max-h-[600px] overflow-y-auto"></div>
+                    </div>
                 </div>
 
-                <!-- BANDEAU "GÉRER LES CATÉGORIES" -->
-                <div id="bandeau-gestion-categories" class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 hidden">
-                    <div class="flex items-center justify-between mb-4 border-b pb-3">
-                        <h3 class="text-sm font-semibold text-slate-800 flex items-center gap-1.5">
-                            <svg class="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
-                            Gérer les catégories
+                <!-- COLONNE DROITE (25%) -->
+                <div class="lg:col-span-3 bg-white rounded-xl shadow-sm border border-slate-200 p-4 sticky top-24 space-y-6">
+                    <div>
+                        <h3 class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-3 border-b pb-2 flex justify-between items-center">
+                            <span>Synthèse globale</span>
+                            <span id="titre-groupe-droite" class="text-[11px] text-blue-600 font-normal">Tous</span>
                         </h3>
-                        <button onclick="ouvrirModalCategories()" class="text-xs font-medium text-indigo-600 hover:text-indigo-800 bg-indigo-50 px-3 py-1.5 rounded-lg flex items-center gap-1 shadow-2xs">
-                            ⚙️ Éditer / Créer
+                        <div id="synthese-barres-categories" class="space-y-3"></div>
+                    </div>
+                    <div class="border-t pt-4">
+                        <h3 class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-3">Équilibre des catégories</h3>
+                        <div class="relative h-64 w-full"><canvas id="radarChart"></canvas></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ========================================== -->
+        <!-- VUE 2 : AIDES & ASTUCES (Nouvelle section) -->
+        <!-- ========================================== -->
+        <div id="vue-astuces" class="hidden">
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 mb-6">
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div>
+                        <h2 class="text-xl font-bold text-slate-800">Base de connaissances</h2>
+                        <p class="text-sm text-slate-500">Centralise tes méthodes de résolution et tes analyses d'erreurs.</p>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <select id="select-test-astuce" onchange="chargerAstuces()" class="border border-slate-300 rounded-lg p-2.5 text-sm font-medium text-slate-700 bg-slate-50 focus:ring-2 focus:ring-blue-500 w-64">
+                            <!-- Rempli par JS -->
+                        </select>
+                        <button onclick="ouvrirModalAjoutAstuce()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-lg text-sm font-bold shadow-sm transition-colors">
+                            + Nouvelle Astuce
                         </button>
                     </div>
-
-                    <div id="conteneur-categories-avec-exercices" class="space-y-4">
-                        <!-- Injecté par JS -->
-                    </div>
-                </div>
-
-                <!-- Fallback si "Tous" est sélectionné -->
-                <div id="fallback-liste-tous" class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-                    <div class="grid grid-cols-12 gap-2 p-3 border-b border-slate-200 text-xs font-semibold text-slate-500 uppercase tracking-wider bg-slate-50">
-                        <div class="col-span-4">Exercice</div>
-                        <div class="col-span-6 text-center">20 derniers résultats</div>
-                        <div class="col-span-1 text-center">Moy</div>
-                        <div class="col-span-1 text-center">Dern</div>
-                    </div>
-                    <div id="exercices-list" class="divide-y divide-slate-100 max-h-[600px] overflow-y-auto">
-                        <!-- Injecté par JS -->
-                    </div>
-                </div>
-
-            </div>
-
-            <!-- COLONNE DROITE (25% de la page - Synthèse type Pilotest) -->
-            <div class="lg:col-span-3 bg-white rounded-xl shadow-sm border border-slate-200 p-4 sticky top-4 space-y-6">
-                <div>
-                    <h3 class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-3 border-b pb-2 flex justify-between items-center">
-                        <span>Synthèse globale</span>
-                        <span id="titre-groupe-droite" class="text-[11px] text-blue-600 font-normal">Tous</span>
-                    </h3>
-                    
-                    <!-- Bloc des barres de moyennes par catégorie + moyenne générale -->
-                    <div id="synthese-barres-categories" class="space-y-3">
-                        <p class="text-xs text-slate-400 text-center py-6">Chargement de la synthèse...</p>
-                    </div>
-                </div>
-
-                <!-- Graphique en araignée (Radar) en dessous -->
-                <div class="border-t pt-4">
-                    <h3 class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-3">Équilibre des catégories</h3>
-                    <div class="relative h-64 w-full">
-                        <canvas id="radarChart"></canvas>
-                    </div>
                 </div>
             </div>
 
+            <!-- Grille d'affichage des mémos -->
+            <div id="grille-astuces" class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+                <!-- Les cartes d'astuces seront générées ici par JS -->
+                <div class="col-span-full text-center py-12 text-slate-400 text-sm">
+                    Sélectionne un test dans le menu déroulant pour afficher ou ajouter tes astuces.
+                </div>
+            </div>
         </div>
+
     </main>
 
-    <!-- MODALES (Groupes & Catégories & Tiroir inchangées) -->
-    <div id="modal-groupes" class="fixed inset-0 bg-black/50 hidden flex items-center justify-center z-50 p-4">
-        <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-xl max-h-[90vh] overflow-y-auto">
-            <div class="flex justify-between items-center mb-4 border-b pb-3">
-                <h3 class="text-lg font-bold text-slate-900">Gestion des Groupes</h3>
-                <button onclick="fermerModalGroupes()" class="text-slate-400 hover:text-slate-600 text-xl font-bold">&times;</button>
-            </div>
-            <div class="mb-6 bg-slate-50 p-4 rounded-xl border border-slate-200">
-                <h4 class="text-sm font-semibold text-slate-700 mb-2">Créer un nouveau groupe</h4>
-                <div class="flex gap-2">
-                    <input type="text" id="input-nom-groupe" placeholder="Ex: PSY1, Entraînement..." class="flex-1 border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-                    <button onclick="creerGroupe()" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700">Créer</button>
-                </div>
-            </div>
-            <div id="liste-gestion-groupes" class="space-y-4"></div>
-            <div class="mt-6 text-right">
-                <button onclick="fermerModalGroupes()" class="bg-slate-800 text-white px-5 py-2 rounded-xl text-sm font-medium hover:bg-slate-900">Fermer</button>
-            </div>
-        </div>
-    </div>
-
-    <div id="modal-categories" class="fixed inset-0 bg-black/50 hidden flex items-center justify-center z-50 p-4">
-        <div class="bg-white rounded-2xl max-w-3xl w-full p-6 shadow-xl max-h-[90vh] overflow-y-auto">
-            <div class="flex justify-between items-center mb-4 border-b pb-3">
-                <h3 id="modal-cat-titre" class="text-lg font-bold text-slate-900">Gérer les catégories</h3>
-                <button onclick="fermerModalCategories()" class="text-slate-400 hover:text-slate-600 text-xl font-bold">&times;</button>
-            </div>
-            <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 mb-6 space-y-4">
-                <h4 class="text-sm font-semibold text-slate-700">Ajouter ou modifier une catégorie</h4>
-                <input type="hidden" id="edit-cat-ancien-nom" value="">
-                <div>
-                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Nom de la catégorie</label>
-                    <input type="text" id="input-nom-cat" placeholder="Ex: Mémorisation, Spatial, Attention..." class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                </div>
-                <div>
-                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Sélectionner les exercices (parmi ceux du groupe)</label>
-                    <div id="liste-checkboxes-exercices-groupe" class="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto p-2 bg-white rounded-lg border border-slate-200"></div>
-                </div>
-                <div class="flex justify-end gap-2 pt-2">
-                    <button onclick="annulerEditionCategorie()" class="bg-slate-200 text-slate-700 px-4 py-2 rounded-lg text-xs font-medium hover:bg-slate-300">Annuler</button>
-                    <button onclick="validerEnregistrementCategorie()" class="bg-indigo-600 text-white px-5 py-2 rounded-lg text-xs font-bold hover:bg-indigo-700 shadow-sm">Enregistrer la catégorie</button>
-                </div>
-            </div>
-            <div>
-                <h4 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">Catégories actuelles de ce groupe</h4>
-                <div id="liste-categories-existantes" class="space-y-3 max-h-60 overflow-y-auto"></div>
-            </div>
-            <div class="mt-6 text-right">
-                <button onclick="fermerModalCategories()" class="bg-slate-800 text-white px-5 py-2 rounded-xl text-sm font-medium hover:bg-slate-900">Fermer</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- PANNEAU LATÉRAL (TIROIR) -->
-    <div id="drawer-detail" class="fixed inset-0 bg-black/50 hidden z-50 flex justify-end transition-opacity duration-300">
-        <div class="bg-white w-full max-w-4xl h-full shadow-2xl flex flex-col overflow-y-auto transform transition-transform duration-300">
-            <div class="p-6 border-b border-slate-200 flex justify-between items-center bg-white sticky top-0 z-10 shadow-sm">
-                <div>
-                    <h2 id="drawer-titre-exercice" class="text-2xl font-bold text-slate-900">Nom de l'exercice</h2>
-                    <p id="drawer-sous-titre" class="text-xs text-slate-500 mt-0.5">Exercice Pilotest • 0 essais au total</p>
-                </div>
-                <div class="flex items-center gap-3">
-                    <a id="drawer-lien-pilotest" href="https://www.pilotest.com" target="_blank" class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-4 py-2.5 rounded-xl shadow-sm transition-colors flex items-center gap-2">
-                        Pratiquer sur Pilotest ↗
-                    </a>
-                    <button onclick="fermerDrawer()" class="text-slate-400 hover:text-slate-600 text-2xl font-bold p-2">&times;</button>
-                </div>
-            </div>
-            <div class="p-8 space-y-8 flex-1 bg-slate-50/50">
-                <div class="grid grid-cols-3 gap-6">
-                    <div class="bg-white border border-slate-200/80 rounded-2xl p-5 text-center shadow-sm">
-                        <div class="text-[11px] uppercase font-bold text-slate-400 tracking-wider mb-2">MOYENNE</div>
-                        <div id="drawer-stat-moyenne" class="text-3xl font-extrabold text-slate-700">-</div>
-                        <div class="text-[11px] text-slate-400 mt-1">moyenne globale</div>
-                    </div>
-                    <div class="bg-white border border-slate-200/80 rounded-2xl p-5 text-center shadow-sm">
-                        <div class="text-[11px] uppercase font-bold text-slate-400 tracking-wider mb-2">DERNIER</div>
-                        <div id="drawer-stat-dernier" class="text-3xl font-extrabold text-slate-700">-</div>
-                        <div class="text-[11px] text-slate-400 mt-1">dernier score</div>
-                    </div>
-                    <div class="bg-white border border-slate-200/80 rounded-2xl p-5 text-center shadow-sm">
-                        <div class="text-[11px] uppercase font-bold text-slate-400 tracking-wider mb-2">RECORD</div>
-                        <div id="drawer-stat-record" class="text-3xl font-extrabold text-slate-700">-</div>
-                        <div id="drawer-date-record" class="text-[11px] text-slate-400 mt-1">meilleur score</div>
-                    </div>
-                </div>
-                <div class="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-sm">
-                    <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-1">Régularité des essais</h3>
-                    <p id="drawer-sous-titre-regularite" class="text-xs text-slate-500 mb-4">Répartition par score</p>
-                    <div class="relative h-52 w-full"><canvas id="barChart"></canvas></div>
-                </div>
-                <div class="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-sm">
-                    <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-4">Évolution depuis le début</h3>
-                    <div class="relative h-64 w-full"><canvas id="evolutionChart"></canvas></div>
-                </div>
-                <div class="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-sm">
-                    <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-4">Tous les essais depuis le début</h3>
-                    <div id="drawer-liste-essais" class="space-y-2.5 max-h-56 overflow-y-auto pr-2"></div>
-                </div>
-            </div>
-        </div>
-    </div>
-
+    <!-- Modales existantes pour les groupes, catégories et le tiroir... (Garde ton code existant ici pour modal-groupes, modal-categories et drawer-detail) -->
+    
     <script src="app.js"></script>
 </body>
 </html>

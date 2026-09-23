@@ -903,3 +903,129 @@ async function demarrerDashboard() {
 }
 
 demarrerDashboard();
+
+// ==========================================
+// --- 7. GESTION DE LA NOUVELLE VUE ASTUCES ---
+// ==========================================
+
+// Base de données locale temporaire (Simulation avant intégration Supabase)
+let astucesLocales = [
+    {
+        exercice: "EFG",
+        titre: "Suites mathématiques fréquentes",
+        contenu: "• **Suite de Fibonacci :** 0, 1, 1, 2, 3, 5, 8, 13, 21, 34... (Addition des deux précédents)\n• **Carrés parfaits :** 1, 4, 9, 16, 25, 36, 49, 64, 81...\n• **Cubes :** 1, 8, 27, 64, 125, 216...",
+        imageUrl: "" // Pas d'image pour cette règle
+    },
+    {
+        exercice: "EFG",
+        titre: "Logique verbale - Les classiques",
+        contenu: "Vérifier en priorité :\n- Somme des lettres (A=1, B=2...)\n- Nombre de voyelles / consonnes\n- Mots qui finissent par une consonne muette\n- Toutes les lettres sont différentes\n- Mots masculins / féminins",
+        imageUrl: ""
+    },
+    {
+        exercice: "Matrices de Raven",
+        titre: "Analyse des courbures et inclinaisons",
+        contenu: "**Ligne 1 :** Les 8 côtés de l'octogone (col 2) sont courbés vers l'intérieur selon l'arc (col 1) -> Étoile à 8 branches concaves.\n\n**Ligne 3 :** L'ellipse horizontale (col 2) est inclinée selon l'axe de la ligne diagonale (col 1).",
+        imageUrl: "image_16bf34.jpg" // Nom du fichier que tu mettras dans le dossier de ton projet plus tard
+    }
+];
+
+// Fonction pour basculer entre les onglets
+window.changerOnglet = function(ongletCible) {
+    const vueSuivi = document.getElementById('vue-suivi');
+    const vueAstuces = document.getElementById('vue-astuces');
+    const btnSuivi = document.getElementById('onglet-suivi');
+    const btnAstuces = document.getElementById('onglet-astuces');
+
+    if (ongletCible === 'suivi') {
+        vueSuivi.classList.replace('hidden', 'block');
+        vueAstuces.classList.replace('block', 'hidden');
+        
+        btnSuivi.className = "text-blue-600 border-b-2 border-blue-600 pb-1 transition-colors";
+        btnAstuces.className = "text-slate-500 hover:text-blue-600 border-b-2 border-transparent pb-1 transition-colors";
+    } else {
+        vueSuivi.classList.replace('block', 'hidden');
+        vueAstuces.classList.replace('hidden', 'block');
+        
+        btnAstuces.className = "text-blue-600 border-b-2 border-blue-600 pb-1 transition-colors";
+        btnSuivi.className = "text-slate-500 hover:text-blue-600 border-b-2 border-transparent pb-1 transition-colors";
+        
+        initialiserSelectAstuces();
+    }
+}
+
+// Initialise le menu déroulant avec la liste complète de tes tests
+function initialiserSelectAstuces() {
+    const select = document.getElementById('select-test-astuce');
+    if (select.options.length <= 1) {
+        select.innerHTML = '<option value="">-- Choisir un exercice --</option>';
+        tousLesExercices.forEach(ex => {
+            const option = document.createElement('option');
+            option.value = ex;
+            option.textContent = ex;
+            select.appendChild(option);
+        });
+        
+        // Sélectionne EFG par défaut pour te montrer le résultat
+        select.value = "EFG";
+        chargerAstuces();
+    }
+}
+
+// Affiche les cartes d'astuces pour le test sélectionné
+window.chargerAstuces = function() {
+    const select = document.getElementById('select-test-astuce');
+    const grille = document.getElementById('grille-astuces');
+    const exerciceChoisi = select.value;
+
+    if (!exerciceChoisi) {
+        grille.innerHTML = `<div class="col-span-full text-center py-12 text-slate-400 text-sm">Sélectionne un test pour voir les astuces.</div>`;
+        return;
+    }
+
+    const astucesFiltrees = astucesLocales.filter(a => a.exercice === exerciceChoisi);
+
+    if (astucesFiltrees.length === 0) {
+        grille.innerHTML = `
+            <div class="col-span-full bg-slate-50 border border-dashed border-slate-300 rounded-xl p-12 text-center">
+                <p class="text-slate-500 font-medium mb-2">Aucune astuce enregistrée pour ce test.</p>
+                <p class="text-sm text-slate-400">Clique sur "+ Nouvelle Astuce" pour créer ta première fiche de révision.</p>
+            </div>`;
+        return;
+    }
+
+    grille.innerHTML = '';
+    astucesFiltrees.forEach(astuce => {
+        // Remplacement simple des retours à la ligne par des <br> pour l'affichage
+        const contenuFormate = astuce.contenu.replace(/\n/g, '<br>');
+        
+        // Bloc image conditionnel
+        let imageHtml = '';
+        if (astuce.imageUrl) {
+            imageHtml = `
+                <div class="w-full h-48 bg-slate-100 border-b border-slate-200 overflow-hidden flex items-center justify-center">
+                    <span class="text-xs text-slate-400 italic">🖼️ [Image: ${astuce.imageUrl}]</span>
+                </div>
+            `;
+        }
+
+        grille.innerHTML += `
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-md transition-shadow flex flex-col">
+                ${imageHtml}
+                <div class="p-5 flex-1">
+                    <h3 class="font-bold text-slate-800 mb-3 text-lg">${astuce.titre}</h3>
+                    <p class="text-sm text-slate-600 leading-relaxed">${contenuFormate}</p>
+                </div>
+                <div class="px-5 py-3 border-t border-slate-100 bg-slate-50 flex justify-end gap-3">
+                    <button class="text-xs font-semibold text-slate-400 hover:text-blue-600">✏️ Éditer</button>
+                    <button class="text-xs font-semibold text-slate-400 hover:text-red-600">🗑️</button>
+                </div>
+            </div>
+        `;
+    });
+}
+
+// Fonction vide prête pour la prochaine étape
+window.ouvrirModalAjoutAstuce = function() {
+    alert("Prochaine étape : Création du formulaire pour ajouter des astuces et sauvegarde dans Supabase !");
+}
