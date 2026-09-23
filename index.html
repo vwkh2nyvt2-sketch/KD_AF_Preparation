@@ -129,7 +129,7 @@
         </div>
 
         <!-- ========================================== -->
-        <!-- VUE 2 : AIDES & ASTUCES (Nouvelle section) -->
+        <!-- VUE 2 : AIDES & ASTUCES -->
         <!-- ========================================== -->
         <div id="vue-astuces" class="hidden">
             <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 mb-6">
@@ -159,15 +159,18 @@
         </div>
     </main>
 
-    <!-- MODALE : AJOUTER UNE ASTUCE -->
+    <!-- MODALE : AJOUTER/ÉDITER UNE ASTUCE -->
     <div id="modal-ajout-astuce" class="fixed inset-0 bg-black/50 hidden flex items-center justify-center z-50 p-4">
         <div class="bg-white rounded-2xl max-w-2xl w-full p-6 shadow-xl max-h-[90vh] overflow-y-auto">
             <div class="flex justify-between items-center mb-6 border-b pb-3">
-                <h3 class="text-lg font-bold text-slate-900">Nouvelle Astuce</h3>
+                <h3 id="modal-astuce-titre-h3" class="text-lg font-bold text-slate-900">Nouvelle Astuce</h3>
                 <button onclick="fermerModalAjoutAstuce()" class="text-slate-400 hover:text-slate-600 text-xl font-bold">&times;</button>
             </div>
             
             <div class="space-y-4">
+                <!-- Champ caché pour l'ID de l'astuce en cas d'édition -->
+                <input type="hidden" id="modal-astuce-id" value="">
+                
                 <div>
                     <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Exercice ciblé</label>
                     <select id="modal-astuce-exercice" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500">
@@ -184,8 +187,8 @@
                 </div>
                 <div>
                     <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Nom du fichier image (Optionnel)</label>
-                    <input type="text" id="modal-astuce-image" placeholder="Ex: image_16bf34.jpg" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-                    <p class="text-[10px] text-slate-400 mt-1">Place d'abord le fichier image dans le dossier racine de ton site, puis écris son nom exact ici.</p>
+                    <input type="text" id="modal-astuce-image" placeholder="Ex: Image1.png" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <p class="text-[10px] text-slate-400 mt-1">Place d'abord le fichier image dans le dossier de ton projet, puis écris son nom complet avec l'extension (ex: .png, .jpg).</p>
                 </div>
             </div>
 
@@ -198,7 +201,6 @@
 
     <!-- MODALES EXISTANTES (Groupes, Catégories, Tiroir) -->
     <div id="modal-groupes" class="fixed inset-0 bg-black/50 hidden flex items-center justify-center z-50 p-4">
-        <!-- ... Ton code existant pour modal-groupes ... -->
         <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-xl max-h-[90vh] overflow-y-auto">
             <div class="flex justify-between items-center mb-4 border-b pb-3">
                 <h3 class="text-lg font-bold text-slate-900">Gestion des Groupes</h3>
@@ -219,7 +221,6 @@
     </div>
 
     <div id="modal-categories" class="fixed inset-0 bg-black/50 hidden flex items-center justify-center z-50 p-4">
-        <!-- ... Ton code existant pour modal-categories ... -->
         <div class="bg-white rounded-2xl max-w-3xl w-full p-6 shadow-xl max-h-[90vh] overflow-y-auto">
             <div class="flex justify-between items-center mb-4 border-b pb-3">
                 <h3 id="modal-cat-titre" class="text-lg font-bold text-slate-900">Gérer les catégories</h3>
@@ -253,7 +254,6 @@
 
     <!-- PANNEAU LATÉRAL (TIROIR) -->
     <div id="drawer-detail" class="fixed inset-0 bg-black/50 hidden z-50 flex justify-end transition-opacity duration-300">
-        <!-- ... Ton code existant pour drawer-detail ... -->
         <div class="bg-white w-full max-w-4xl h-full shadow-2xl flex flex-col overflow-y-auto transform transition-transform duration-300">
             <div class="p-6 border-b border-slate-200 flex justify-between items-center bg-white sticky top-0 z-10 shadow-sm">
                 <div>
