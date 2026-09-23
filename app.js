@@ -60,14 +60,13 @@ let barChart = null;
 let radarChart = null;
 let exerciceActuelDrawer = null;
 
-// NOUVEAU : Tableau qui va stocker toutes les astuces venues de Supabase
+// Tableau qui va stocker toutes les astuces venues de Supabase
 let astucesGlobales = [];
 
 // --- 3. CHARGEMENT DEPUIS LE CLOUD ---
 async function chargerDonnees() {
     tousLesExercices.forEach(ex => statsGlobales[ex] = { scores: [], dates: [], ids: [] });
 
-    // 1. Charger les scores
     const { data: scoresData, error: scoresError } = await supabaseClient.from('scores').select('*').order('id', { ascending: true });
     if (!scoresError && scoresData) {
         scoresData.forEach(row => {
@@ -79,7 +78,6 @@ async function chargerDonnees() {
         });
     }
 
-    // 2. Charger les groupes
     const { data: groupesData, error: groupesError } = await supabaseClient.from('groupes').select('*');
     groupesPersonnalisés = {};
     if (!groupesError && groupesData) {
@@ -92,7 +90,6 @@ async function chargerDonnees() {
         });
     }
 
-    // 3. Charger les astuces (NOUVEAU)
     const { data: astucesData, error: astucesError } = await supabaseClient.from('astuces').select('*').order('id', { ascending: false });
     if (!astucesError && astucesData) {
         astucesGlobales = astucesData;
@@ -501,15 +498,358 @@ function mettreAJourRadarChart(labels, moyennesMap) {
     });
 }
 
-// (Le reste des modales Groupes, Catégories, Tiroir et Supression reste identique. Je raccourcis le code générique pour gagner de la place, mais garde tes fonctions existantes intactes).
-// [Copier ici tout ton bloc "// --- MODALES DE GESTION DES CATÉGORIES ET GROUPES ---" et "// --- GESTION DU TIROIR & SCORES ---" existant]
-// Assure-toi de bien conserver ces blocs dans ton app.js !
+
+// --- MODALES DE GESTION DES CATÉGORIES ET GROUPES ---
+window.ouvrirModalCategories = function(nomCatEdit = null) {
+    if (groupeActif === 'Tous') return;
+    document.getElementById('modal-categories').classList.remove('hidden');
+    let g = groupesPersonnalisés[groupeActif];
+    if (Array.isArray(g)) g = { exercices: g, sousCategories: {} };
+    const exercicesDuGroupe = g.exercices || [];
+    const containerCheck = document.getElementById('liste-checkboxes-exercices-groupe');
+    containerCheck.innerHTML = '';
+
+    if (exercicesDuGroupe.length === 0) {
+        containerCheck.innerHTML = `<span class="text-xs text-slate-400 col-span-2 text-center py-4">Ce groupe ne contient aucun exercice.</span>`;
+    } else {
+        exercicesDuGroupe.forEach(ex => {
+            containerCheck.innerHTML += `
+                <label class="flex items-center gap-2 text-xs text-slate-700 bg-slate-50 p-1.5 rounded border border-slate-200 cursor-pointer hover:bg-indigo-50">
+                    <input type="checkbox" name="cat-ex-checkbox" value="${ex}" class="rounded text-indigo-600">
+                    <span class="truncate">${ex}</span>
+                </label>
+            `;
+        });
+    }
+    rendreListeCategoriesExistantesModal();
+    if (nomCatEdit) {
+        document.getElementById('modal-cat-titre').textContent = `Modifier la catégorie : ${nomCatEdit}`;
+        document.getElementById('edit-cat-ancien-nom').value = nomCatEdit;
+        document.getElementById('input-nom-cat').value = nomCatEdit;
+        const dejaCoches = g.sousCategories[nomCatEdit] || [];
+        containerCheck.querySelectorAll('input[name="cat-ex-checkbox"]').forEach(inp => {
+            if (dejaCoches.includes(inp.value)) inp.checked = true;
+        });
+    } else {
+        document.getElementById('modal-cat-titre').textContent = 'Gérer les catégories';
+        document.getElementById('edit-cat-ancien-nom').value = '';
+        document.getElementById('input-nom-cat').value = '';
+    }
+}
+
+window.fermerModalCategories = function() {
+    document.getElementById('modal-categories').classList.add('hidden');
+    afficherNavigationGroupes();
+    genererBandeauxEtGraphiquesGlobaux();
+}
+
+window.annulerEditionCategorie = function() {
+    document.getElementById('input-nom-cat').value = '';
+    document.getElementById('edit-cat-ancien-nom').value = '';
+    document.getElementById('modal-cat-titre').textContent = 'Gérer les catégories';
+    document.querySelectorAll('input[name="cat-ex-checkbox"]').forEach(inp => inp.checked = false);
+}
+
+window.validerEnregistrementCategorie = async function() {
+    if (groupeActif === 'Tous') return;
+    const nomCatInput = document.getElementById('input-nom-cat').value.trim();
+    const ancienNom = document.getElementById('edit-cat-ancien-nom').value.trim();
+    if (!nomCatInput) { alert("Veuillez donner un nom à la catégorie."); return; }
+
+    let g = groupesPersonnalisés[groupeActif];
+    if (Array.isArray(g)) g = { exercices: g, sousCategories: {} };
+    if (!g.sousCategories) g.sousCategories = {};
+
+    const exercicesSelectionnes = Array.from(document.querySelectorAll('input[name="cat-ex-checkbox"]:checked')).map(cb => cb.value);
+    if (ancienNom && ancienNom !== nomCatInput) delete g.sousCategories[ancienNom];
+    g.sousCategories[nomCatInput] = exercicesSelectionnes;
+    groupesPersonnalisés[groupeActif] = g;
+
+    await sauvegarderGroupesDansCloud();
+    annulerEditionCategorie();
+    rendreListeCategoriesExistantesModal();
+    afficherNavigationGroupes();
+    genererBandeauxEtGraphiquesGlobaux();
+}
+
+window.editerCategorie = function(nomCat) { ouvrirModalCategories(nomCat); }
+
+window.supprimerCategorieModal = async function(nomCat) {
+    if (!confirm(`Voulez-vous vraiment supprimer la catégorie "${nomCat}" ?`)) return;
+    let g = groupesPersonnalisés[groupeActif];
+    if (g && g.sousCategories) {
+        delete g.sousCategories[nomCat];
+        groupesPersonnalisés[groupeActif] = g;
+        await sauvegarderGroupesDansCloud();
+        rendreListeCategoriesExistantesModal();
+        afficherNavigationGroupes();
+        genererBandeauxEtGraphiquesGlobaux();
+    }
+}
+
+function rendreListeCategoriesExistantesModal() {
+    const container = document.getElementById('liste-categories-existantes');
+    if (!container) return;
+    container.innerHTML = '';
+    let g = groupesPersonnalisés[groupeActif];
+    if (Array.isArray(g)) g = { exercices: g, sousCategories: {} };
+    const sousCats = g.sousCategories || {};
+    const nomsCats = Object.keys(sousCats);
+
+    if (nomsCats.length === 0) {
+        container.innerHTML = `<p class="text-xs text-slate-400 text-center py-2">Aucune catégorie enregistrée pour ce groupe.</p>`;
+        return;
+    }
+
+    nomsCats.forEach(nomCat => {
+        const list = sousCats[nomCat] || [];
+        container.innerHTML += `
+            <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 flex justify-between items-center">
+                <div>
+                    <span class="font-bold text-xs text-slate-800">📁 ${nomCat}</span>
+                    <div class="text-[10px] text-slate-400 mt-0.5">${list.join(', ') || 'Aucun exercice'}</div>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button onclick="editerCategorie('${nomCat}')" class="bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 p-1.5 rounded-lg text-xs">⚙️ Éditer</button>
+                    <button onclick="supprimerCategorieModal('${nomCat}')" class="bg-red-50 hover:bg-red-100 text-red-600 p-1.5 rounded-lg text-xs">🗑️</button>
+                </div>
+            </div>
+        `;
+    });
+}
+
+// --- GESTION DU TIROIR & SCORES ---
+window.ouvrirDrawer = function(nomExercice) {
+    exerciceActuelDrawer = nomExercice;
+    document.getElementById('drawer-titre-exercice').textContent = nomExercice;
+    document.getElementById('drawer-detail').classList.remove('hidden');
+
+    const donnees = statsGlobales[nomExercice] || { scores: [], dates: [], ids: [] };
+    const nbEssais = donnees.scores.length;
+
+    document.getElementById('drawer-sous-titre').textContent = `Exercice Pilotest • ${nbEssais} essai(s) au total`;
+
+    let moyenne = '-';
+    let dernier = '-';
+    let record = '-';
+    let dateRecord = 'Aucun record';
+
+    if (nbEssais > 0) {
+        const derniers15Scores = donnees.scores.slice(-15);
+        const somme = derniers15Scores.reduce((a, b) => a + b, 0);
+        moyenne = Math.round(somme / derniers15Scores.length);
+        dernier = donnees.scores[nbEssais - 1];
+        let maxScore = Math.max(...donnees.scores);
+        record = maxScore;
+        dateRecord = donnees.dates[donnees.scores.indexOf(maxScore)] || '';
+    }
+
+    const boxMoy = document.getElementById('drawer-stat-moyenne');
+    boxMoy.textContent = moyenne;
+    boxMoy.style.color = moyenne !== '-' ? getColorForClass(moyenne) : '#64748b';
+
+    const boxDer = document.getElementById('drawer-stat-dernier');
+    boxDer.textContent = dernier;
+    boxDer.style.color = dernier !== '-' ? getColorForClass(dernier) : '#64748b';
+
+    const boxRec = document.getElementById('drawer-stat-record');
+    boxRec.textContent = record;
+    boxRec.style.color = record !== '-' ? getColorForClass(record) : '#64748b';
+    document.getElementById('drawer-date-record').textContent = dateRecord ? `le ${dateRecord}` : 'meilleur score';
+
+    rendreGraphiqueBarres(donnees.scores);
+    rendreGraphiqueLigne(donnees);
+    rendreListeEssais(donnees);
+}
+
+window.fermerDrawer = function() { document.getElementById('drawer-detail').classList.add('hidden'); }
+
+function rendreGraphiqueBarres(scores) {
+    const counts = Array(9).fill(0);
+    scores.forEach(s => { if (s >= 1 && s <= 9) counts[s - 1]++; });
+    const ctx = document.getElementById('barChart').getContext('2d');
+    if (barChart != null) barChart.destroy();
+
+    barChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: ['1', '2', '3', '4', '5', '6', '7', '8', '9'],
+            datasets: [{ data: counts, backgroundColor: [1,2,3,4,5,6,7,8,9].map(i => getColorForClass(i)), borderRadius: 6 }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: { beginAtZero: true, ticks: { stepSize: 1, font: { size: 10 } }, grid: { color: '#f1f5f9' } },
+                x: { grid: { display: false }, ticks: { font: { weight: 'bold' } } }
+            },
+            plugins: { legend: { display: false } }
+        }
+    });
+}
+
+function rendreGraphiqueLigne(donnees) {
+    const ctx = document.getElementById('evolutionChart').getContext('2d');
+    if (evolutionChart != null) evolutionChart.destroy();
+
+    evolutionChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: donnees.dates,
+            datasets: [{
+                label: 'Score Stanine',
+                data: donnees.scores,
+                borderColor: '#3b82f6',
+                borderWidth: 2.5,
+                tension: 0.1,
+                pointBackgroundColor: context => getColorForClass(context.raw),
+                pointBorderColor: '#ffffff',
+                pointBorderWidth: 2,
+                pointRadius: 6,
+                pointHoverRadius: 8
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: { min: 1, max: 9, ticks: { stepSize: 1, font: { weight: 'bold' } }, grid: { color: '#f1f5f9' } },
+                x: { ticks: { maxTicksLimit: 10, font: { size: 10 } }, grid: { display: false } }
+            },
+            plugins: { legend: { display: false } }
+        }
+    });
+}
+
+function rendreListeEssais(donnees) {
+    const container = document.getElementById('drawer-liste-essais');
+    container.innerHTML = '';
+    if (!donnees.scores || donnees.scores.length === 0) {
+        container.innerHTML = `<p class="text-xs text-slate-400 text-center py-4">Aucun essai enregistré.</p>`;
+        return;
+    }
+    for (let i = donnees.scores.length - 1; i >= 0; i--) {
+        const score = donnees.scores[i];
+        const date = donnees.dates[i];
+        const idScore = donnees.ids[i];
+        const couleur = getColorForClass(score);
+        const couleurTexte = getTextColorForClass(score);
+        container.innerHTML += `
+            <div class="flex justify-between items-center bg-slate-50 border border-slate-100 p-3 rounded-xl text-xs shadow-2xs">
+                <span class="text-slate-500 font-medium">Essai du ${date}</span>
+                <div class="flex items-center gap-3">
+                    <span class="font-bold px-2.5 py-1 rounded-lg" style="background-color: ${couleur}; color: ${couleurTexte};">Stanine ${score}</span>
+                    <button onclick="supprimerScore(${idScore}, '${exerciceActuelDrawer}')" class="text-slate-400 hover:text-red-600 font-bold p-1">🗑️</button>
+                </div>
+            </div>
+        `;
+    }
+}
+
+window.supprimerScore = async function(idScore, nomExercice) {
+    if (!confirm("Voulez-vous vraiment supprimer cet essai ?")) return;
+    const { error } = await supabaseClient.from('scores').delete().eq('id', idScore);
+    if (error) { alert("❌ Erreur : " + error.message); return; }
+    await chargerDonnees();
+    genererBandeauxEtGraphiquesGlobaux();
+    ouvrirDrawer(nomExercice);
+}
+
+window.exporterVersExcel = async function() {
+    const { data: scoresData, error } = await supabaseClient.from('scores').select('*').order('id', { ascending: true });
+    if (error || !scoresData || scoresData.length === 0) { alert("⚠️ Aucun score à exporter !"); return; }
+    let csvContent = "data:text/csv;charset=utf-8,\uFEFF";
+    csvContent += "Date;Exercice;Score Stanine\n";
+    scoresData.forEach(row => { csvContent += `${row.date_test};${row.exercice};${row.score_stanine}\n`; });
+    const link = document.createElement("a");
+    link.setAttribute("href", encodeURI(csvContent));
+    link.setAttribute("download", `suivi_cadets_pilotest_${new Date().toLocaleDateString('fr-FR').replace(/\//g, '_')}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+}
+
+window.ouvrirModalGroupes = function() { document.getElementById('modal-groupes').classList.remove('hidden'); rendreInterfaceGestionGroupes(); }
+window.fermerModalGroupes = function() { document.getElementById('modal-groupes').classList.add('hidden'); afficherNavigationGroupes(); initialiserFormulaireSelect(); genererBandeauxEtGraphiquesGlobaux(); }
+window.creerGroupe = async function() {
+    const input = document.getElementById('input-nom-groupe');
+    const nom = input.value.trim();
+    if (!nom) return;
+    if (groupesPersonnalisés[nom]) { alert("Ce groupe existe déjà !"); return; }
+    groupesPersonnalisés[nom] = { exercices: [], sousCategories: {} };
+    await sauvegarderGroupesDansCloud();
+    input.value = '';
+    rendreInterfaceGestionGroupes();
+}
+window.supprimerGroupe = async function(nomGroupe) {
+    if (confirm(`Voulez-vous supprimer le groupe "${nomGroupe}" ?`)) {
+        delete groupesPersonnalisés[nomGroupe];
+        if (groupeActif === nomGroupe) groupeActif = "Tous";
+        await supprimerGroupeDansCloud(nomGroupe);
+        rendreInterfaceGestionGroupes();
+    }
+}
+window.basculerExerciceDansGroupe = async function(nomGroupe, nomExercice) {
+    let g = groupesPersonnalisés[nomGroupe];
+    if (!g) return;
+    if (Array.isArray(g)) g = { exercices: g, sousCategories: {} };
+    const idx = g.exercices.indexOf(nomExercice);
+    if (idx > -1) {
+        g.exercices.splice(idx, 1);
+        Object.keys(g.sousCategories).forEach(cat => {
+            const subIdx = g.sousCategories[cat].indexOf(nomExercice);
+            if (subIdx > -1) g.sousCategories[cat].splice(subIdx, 1);
+        });
+    } else {
+        g.exercices.push(nomExercice);
+    }
+    groupesPersonnalisés[nomGroupe] = g;
+    await sauvegarderGroupesDansCloud();
+    rendreInterfaceGestionGroupes();
+}
+
+function rendreInterfaceGestionGroupes() {
+    const container = document.getElementById('liste-gestion-groupes');
+    if(!container) return;
+    container.innerHTML = '';
+    const clesGroupes = Object.keys(groupesPersonnalisés);
+    if (clesGroupes.length === 0) {
+        container.innerHTML = `<p class="text-sm text-slate-400 text-center py-4">Aucun groupe pour l'instant.</p>`;
+        return;
+    }
+    clesGroupes.forEach(nomGroupe => {
+        let g = groupesPersonnalisés[nomGroupe];
+        if (Array.isArray(g)) g = { exercices: g, sousCategories: {} };
+        const exercicesDuGroupe = g.exercices || [];
+        let htmlExercicesDispos = '';
+        tousLesExercices.forEach(ex => {
+            const estInclus = exercicesDuGroupe.includes(ex);
+            htmlExercicesDispos += `
+                <label class="flex items-center gap-2 text-xs text-slate-700 bg-white p-1.5 rounded border border-slate-200 cursor-pointer hover:bg-blue-50">
+                    <input type="checkbox" ${estInclus ? 'checked' : ''} onchange="basculerExerciceDansGroupe('${nomGroupe}', '${ex}')" class="rounded text-blue-600 focus:ring-blue-500">
+                    <span class="truncate">${ex}</span>
+                </label>
+            `;
+        });
+        container.innerHTML += `
+            <div class="border border-slate-200 rounded-xl p-4 bg-slate-50 space-y-3">
+                <div class="flex justify-between items-center border-b pb-2">
+                    <h5 class="font-bold text-sm text-slate-800">📁 ${nomGroupe} (${exercicesDuGroupe.length} tests)</h5>
+                    <button onclick="supprimerGroupe('${nomGroupe}')" class="text-xs text-red-500 hover:text-red-700 font-medium">Supprimer</button>
+                </div>
+                <div class="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto p-1 bg-slate-100 rounded-lg">
+                    ${htmlExercicesDispos}
+                </div>
+            </div>
+        `;
+    });
+}
+
 
 // ==========================================
 // --- 7. GESTION DE LA VUE AIDES & ASTUCES ---
 // ==========================================
 
-// Fonction pour basculer entre les onglets
 window.changerOnglet = function(ongletCible) {
     const vueSuivi = document.getElementById('vue-suivi');
     const vueAstuces = document.getElementById('vue-astuces');
@@ -533,7 +873,6 @@ window.changerOnglet = function(ongletCible) {
     }
 }
 
-// Initialise le menu déroulant avec la liste complète de tes tests
 function initialiserSelectAstuces() {
     const select = document.getElementById('select-test-astuce');
     if (select.options.length <= 1) {
@@ -545,7 +884,6 @@ function initialiserSelectAstuces() {
             select.appendChild(option);
         });
         
-        // Charger avec le premier exercice disponible par défaut
         if(tousLesExercices.length > 0) {
             select.value = tousLesExercices[0];
             chargerAstuces();
@@ -553,7 +891,6 @@ function initialiserSelectAstuces() {
     }
 }
 
-// Affiche les cartes d'astuces depuis Supabase pour le test sélectionné
 window.chargerAstuces = function() {
     const select = document.getElementById('select-test-astuce');
     const grille = document.getElementById('grille-astuces');
@@ -579,16 +916,16 @@ window.chargerAstuces = function() {
     astucesFiltrees.forEach(astuce => {
         const contenuFormate = astuce.contenu.replace(/\n/g, '<br>');
         
-        // C'est ici que l'image s'affiche. On utilise object-contain pour que l'image entière de la grille (ex: Raven) soit visible sans rognage.
         let imageHtml = '';
         if (astuce.image_url) {
             imageHtml = `
                 <div class="w-full bg-slate-100 border-b border-slate-200 overflow-hidden flex items-center justify-center p-2" style="min-height: 200px;">
-                    <img src="${astuce.image_url}" alt="${astuce.titre}" class="max-w-full max-h-[400px] object-contain rounded">
+                    <img src="${astuce.image_url}" alt="${astuce.titre}" class="max-w-full max-h-[400px] object-contain rounded shadow-sm">
                 </div>
             `;
         }
 
+        // Ajout du bouton Éditer ici !
         grille.innerHTML += `
             <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-md transition-shadow flex flex-col">
                 ${imageHtml}
@@ -597,18 +934,21 @@ window.chargerAstuces = function() {
                     <p class="text-sm text-slate-600 leading-relaxed">${contenuFormate}</p>
                 </div>
                 <div class="px-5 py-3 border-t border-slate-100 bg-slate-50 flex justify-end gap-3">
-                    <button onclick="supprimerAstuce(${astuce.id})" class="text-xs font-semibold text-slate-400 hover:text-red-600">🗑️ Supprimer</button>
+                    <button onclick="editerAstuce(${astuce.id})" class="text-xs font-semibold text-slate-400 hover:text-blue-600 transition-colors">✏️ Éditer</button>
+                    <button onclick="supprimerAstuce(${astuce.id})" class="text-xs font-semibold text-slate-400 hover:text-red-600 transition-colors">🗑️ Supprimer</button>
                 </div>
             </div>
         `;
     });
 }
 
-// --- MODALE D'AJOUT D'ASTUCES ---
+// Ouvre la modale en mode Création
 window.ouvrirModalAjoutAstuce = function() {
+    document.getElementById('modal-astuce-id').value = ''; // On vide l'ID
+    document.getElementById('modal-astuce-titre-h3').textContent = 'Nouvelle Astuce';
+    
     document.getElementById('modal-ajout-astuce').classList.remove('hidden');
     
-    // Remplit le menu déroulant du formulaire avec tous les tests
     const selectModal = document.getElementById('modal-astuce-exercice');
     selectModal.innerHTML = '';
     tousLesExercices.forEach(ex => {
@@ -618,20 +958,50 @@ window.ouvrirModalAjoutAstuce = function() {
         selectModal.appendChild(option);
     });
     
-    // Si un exercice est déjà sélectionné dans la page, on le pré-sélectionne dans le formulaire
     const selectPage = document.getElementById('select-test-astuce').value;
     if (selectPage) selectModal.value = selectPage;
-}
 
-window.fermerModalAjoutAstuce = function() {
-    document.getElementById('modal-ajout-astuce').classList.add('hidden');
-    // Réinitialise le formulaire
+    // Vider les champs
     document.getElementById('modal-astuce-titre').value = '';
     document.getElementById('modal-astuce-contenu').value = '';
     document.getElementById('modal-astuce-image').value = '';
 }
 
+// Ouvre la modale en mode Édition
+window.editerAstuce = function(idAstuce) {
+    const astuce = astucesGlobales.find(a => a.id === idAstuce);
+    if (!astuce) return;
+
+    // Remplir l'ID caché pour savoir qu'on modifie
+    document.getElementById('modal-astuce-id').value = astuce.id;
+    document.getElementById('modal-astuce-titre-h3').textContent = 'Modifier l\'astuce';
+
+    const selectModal = document.getElementById('modal-astuce-exercice');
+    selectModal.innerHTML = '';
+    tousLesExercices.forEach(ex => {
+        const option = document.createElement('option');
+        option.value = ex;
+        option.textContent = ex;
+        selectModal.appendChild(option);
+    });
+    selectModal.value = astuce.exercice;
+
+    // Remplir les champs avec les données existantes
+    document.getElementById('modal-astuce-titre').value = astuce.titre;
+    document.getElementById('modal-astuce-contenu').value = astuce.contenu;
+    document.getElementById('modal-astuce-image').value = astuce.image_url || '';
+
+    // Afficher la modale
+    document.getElementById('modal-ajout-astuce').classList.remove('hidden');
+}
+
+window.fermerModalAjoutAstuce = function() {
+    document.getElementById('modal-ajout-astuce').classList.add('hidden');
+}
+
+// Sauvegarde : Insert (si nouvel ID) ou Update (si ID existant)
 window.sauvegarderAstuce = async function() {
+    const idAstuce = document.getElementById('modal-astuce-id').value;
     const exercice = document.getElementById('modal-astuce-exercice').value;
     const titre = document.getElementById('modal-astuce-titre').value.trim();
     const contenu = document.getElementById('modal-astuce-contenu').value.trim();
@@ -642,28 +1012,29 @@ window.sauvegarderAstuce = async function() {
         return;
     }
 
-    const nouvelleAstuce = {
+    const donneesAstuce = {
         exercice: exercice,
         titre: titre,
         contenu: contenu,
         image_url: imageUrl || null
     };
 
-    // 1. Envoi à Supabase
-    const { error } = await supabaseClient.from('astuces').insert([nouvelleAstuce]);
-    
-    if (error) {
-        alert("Erreur lors de la sauvegarde : " + error.message);
-        return;
+    if (idAstuce) {
+        // Mode ÉDITION (Update)
+        const { error } = await supabaseClient.from('astuces').update(donneesAstuce).eq('id', idAstuce);
+        if (error) { alert("Erreur lors de la modification : " + error.message); return; }
+    } else {
+        // Mode CRÉATION (Insert)
+        const { error } = await supabaseClient.from('astuces').insert([donneesAstuce]);
+        if (error) { alert("Erreur lors de la sauvegarde : " + error.message); return; }
     }
 
-    // 2. Recharge les données depuis le cloud pour mettre à jour l'affichage
+    // Recharge les données pour l'affichage
     const { data: astucesData } = await supabaseClient.from('astuces').select('*').order('id', { ascending: false });
     astucesGlobales = astucesData || [];
     
-    // 3. Ferme et rafraîchit la grille
     fermerModalAjoutAstuce();
-    document.getElementById('select-test-astuce').value = exercice; // Bascule sur le bon test
+    document.getElementById('select-test-astuce').value = exercice; 
     chargerAstuces();
 }
 
@@ -671,8 +1042,6 @@ window.supprimerAstuce = async function(idAstuce) {
     if (!confirm("Voulez-vous vraiment supprimer cette astuce ?")) return;
     
     await supabaseClient.from('astuces').delete().eq('id', idAstuce);
-    
-    // Recharger la liste locale
     astucesGlobales = astucesGlobales.filter(a => a.id !== idAstuce);
     chargerAstuces();
 }
@@ -684,7 +1053,6 @@ async function demarrerDashboard() {
     initFormulaire();
     genererBandeauxEtGraphiquesGlobaux();
     
-    // Pour être sûr que le sélecteur d'astuces soit prêt
     if(document.getElementById('vue-astuces').classList.contains('block')) {
         initialiserSelectAstuces();
     }
