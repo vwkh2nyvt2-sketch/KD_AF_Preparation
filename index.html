@@ -4,14 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Suivi Pilotest - Cadets AF</title>
-    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <!-- Supabase JS -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link rel="stylesheet" href="style.css">
-    <link rel="icon" type="image/png" href="favicon.png">
 </head>
 <body class="bg-slate-50 text-slate-800 font-sans min-h-screen pb-12">
     
@@ -47,28 +43,22 @@
                 </button>
             </div>
 
-            <!-- CONTENEUR GLOBAL EN 2 COLONNES : 3/4 pour la gauche, 1/4 pour la droite -->
+            <!-- CONTENEUR GLOBAL EN 2 COLONNES -->
             <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
                 
-                <!-- COLONNE GAUCHE (75% de la page) -->
+                <!-- COLONNE GAUCHE (75%) -->
                 <div class="lg:col-span-9 space-y-6">
-                    
-                    <!-- Encadré d'ajout de test compact -->
                     <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
                         <div class="flex flex-col gap-3">
                             <div class="flex items-center justify-between">
-                                <h2 class="text-sm font-semibold text-slate-800 flex items-center gap-1.5">
-                                    ➕ Ajouter un test :
-                                </h2>
+                                <h2 class="text-sm font-semibold text-slate-800 flex items-center gap-1.5">➕ Ajouter un test :</h2>
                                 <span id="label-groupe-actif" class="text-[11px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-normal">Groupe : Tous</span>
                             </div>
-                            
                             <div class="w-full">
                                 <select id="select-exercice" class="w-full border border-slate-300 rounded-lg p-2 text-xs font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer appearance-none bg-slate-50">
                                     <option value="">-- Sélectionner un test --</option>
                                 </select>
                             </div>
-
                             <div id="zone-boutons-stanine" class="flex flex-wrap gap-1 opacity-30 pointer-events-none transition-opacity duration-300">
                                 <span class="text-xs text-slate-500 font-medium mr-1 flex items-center">Score :</span>
                             </div>
@@ -76,20 +66,14 @@
                         <p id="message-confirmation" class="text-green-600 text-xs font-medium mt-2 text-center hidden">✅ Score enregistré avec succès !</p>
                     </div>
 
-                    <!-- BANDEAU "GÉRER LES CATÉGORIES" -->
                     <div id="bandeau-gestion-categories" class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 hidden">
                         <div class="flex items-center justify-between mb-4 border-b pb-3">
-                            <h3 class="text-sm font-semibold text-slate-800 flex items-center gap-1.5">
-                                📂 Gérer les catégories
-                            </h3>
-                            <button onclick="ouvrirModalCategories()" class="text-xs font-medium text-indigo-600 hover:text-indigo-800 bg-indigo-50 px-3 py-1.5 rounded-lg flex items-center gap-1 shadow-2xs">
-                                ⚙️ Éditer / Créer
-                            </button>
+                            <h3 class="text-sm font-semibold text-slate-800 flex items-center gap-1.5">📂 Gérer les catégories</h3>
+                            <button onclick="ouvrirModalCategories()" class="text-xs font-medium text-indigo-600 hover:text-indigo-800 bg-indigo-50 px-3 py-1.5 rounded-lg flex items-center gap-1 shadow-2xs">⚙️ Éditer / Créer</button>
                         </div>
                         <div id="conteneur-categories-avec-exercices" class="space-y-4"></div>
                     </div>
 
-                    <!-- Fallback si "Tous" est sélectionné -->
                     <div id="fallback-liste-tous" class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
                         <div class="grid grid-cols-12 gap-2 p-3 border-b border-slate-200 text-xs font-semibold text-slate-500 uppercase tracking-wider bg-slate-50">
                             <div class="col-span-4">Exercice</div>
@@ -97,32 +81,24 @@
                             <div class="col-span-1 text-center">Moy</div>
                             <div class="col-span-1 text-center">Dern</div>
                         </div>
-                        <div id="exercices-list" class="divide-y divide-slate-100 max-h-[600px] overflow-y-auto">
-                            <!-- Injecté par JS -->
-                        </div>
+                        <div id="exercices-list" class="divide-y divide-slate-100 max-h-[600px] overflow-y-auto"></div>
                     </div>
                 </div>
 
-                <!-- COLONNE DROITE (25% de la page - Synthèse type Pilotest) -->
+                <!-- COLONNE DROITE (25%) -->
                 <div class="lg:col-span-3 bg-white rounded-xl shadow-sm border border-slate-200 p-4 sticky top-24 space-y-6">
                     <div>
                         <h3 class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-3 border-b pb-2 flex justify-between items-center">
                             <span>Synthèse globale</span>
                             <span id="titre-groupe-droite" class="text-[11px] text-blue-600 font-normal">Tous</span>
                         </h3>
-                        
-                        <!-- Bloc des barres de moyennes par catégorie + moyenne générale -->
                         <div id="synthese-barres-categories" class="space-y-3">
-                            <p class="text-xs text-slate-400 text-center py-6">Chargement de la synthèse...</p>
+                            <p class="text-xs text-slate-400 text-center py-6">Chargement...</p>
                         </div>
                     </div>
-
-                    <!-- Graphique en araignée (Radar) en dessous -->
                     <div class="border-t pt-4">
                         <h3 class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-3">Équilibre des catégories</h3>
-                        <div class="relative h-64 w-full">
-                            <canvas id="radarChart"></canvas>
-                        </div>
+                        <div class="relative h-64 w-full"><canvas id="radarChart"></canvas></div>
                     </div>
                 </div>
             </div>
@@ -139,9 +115,7 @@
                         <p class="text-sm text-slate-500">Centralise tes méthodes de résolution et tes analyses d'erreurs.</p>
                     </div>
                     <div class="flex items-center gap-3">
-                        <select id="select-test-astuce" onchange="chargerAstuces()" class="border border-slate-300 rounded-lg p-2.5 text-sm font-medium text-slate-700 bg-slate-50 focus:ring-2 focus:ring-blue-500 w-64">
-                            <!-- Rempli par JS -->
-                        </select>
+                        <select id="select-test-astuce" onchange="chargerAstuces()" class="border border-slate-300 rounded-lg p-2.5 text-sm font-medium text-slate-700 bg-slate-50 focus:ring-2 focus:ring-blue-500 w-64"></select>
                         <button onclick="ouvrirModalAjoutAstuce()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-lg text-sm font-bold shadow-sm transition-colors">
                             + Nouvelle Astuce
                         </button>
@@ -151,7 +125,6 @@
 
             <!-- Grille d'affichage des mémos -->
             <div id="grille-astuces" class="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
-                <!-- Les cartes d'astuces seront générées ici par JS -->
                 <div class="col-span-full text-center py-12 text-slate-400 text-sm">
                     Sélectionne un test dans le menu déroulant pour afficher ou ajouter tes astuces.
                 </div>
@@ -173,33 +146,36 @@
                 
                 <div>
                     <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Exercice ciblé</label>
-                    <select id="modal-astuce-exercice" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                        <!-- Rempli en JS -->
-                    </select>
+                    <select id="modal-astuce-exercice" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500"></select>
                 </div>
                 <div>
                     <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Titre de l'astuce</label>
-                    <input type="text" id="modal-astuce-titre" placeholder="Ex: Suites mathématiques fréquentes, Logique des diagonales..." class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <input type="text" id="modal-astuce-titre" placeholder="Ex: Suites mathématiques fréquentes..." class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
                 </div>
                 <div>
                     <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Texte / Explications</label>
                     <textarea id="modal-astuce-contenu" rows="6" placeholder="Tape tes méthodes, déductions et notes ici..." class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
                 </div>
-                <div>
-                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Nom du fichier image (Optionnel)</label>
-                    <input type="text" id="modal-astuce-image" placeholder="Ex: Image1.png" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-                    <p class="text-[10px] text-slate-400 mt-1">Place d'abord le fichier image dans le dossier de ton projet, puis écris son nom complet avec l'extension (ex: .png, .jpg).</p>
+                
+                <!-- NOUVEL INPUT FILE -->
+                <div class="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Joindre une capture d'écran</label>
+                    <input type="file" id="modal-astuce-file" accept="image/png, image/jpeg, image/webp" class="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-700 cursor-pointer">
+                    
+                    <!-- Champs pour gérer l'édition d'une image existante -->
+                    <input type="hidden" id="modal-astuce-image-actuelle" value="">
+                    <p id="texte-image-actuelle" class="text-[11px] text-blue-600 mt-2 font-medium hidden">✅ Une image est déjà associée à cette astuce. Joindre un nouveau fichier l'écrasera.</p>
                 </div>
             </div>
 
             <div class="mt-6 pt-4 border-t border-slate-100 flex justify-end gap-3">
                 <button onclick="fermerModalAjoutAstuce()" class="bg-slate-200 text-slate-700 px-5 py-2.5 rounded-xl text-sm font-medium hover:bg-slate-300">Annuler</button>
-                <button onclick="sauvegarderAstuce()" class="bg-blue-600 text-white px-5 py-2.5 rounded-xl text-sm font-bold hover:bg-blue-700 shadow-sm">Enregistrer</button>
+                <button id="btn-sauvegarder-astuce" onclick="sauvegarderAstuce()" class="bg-emerald-600 text-white px-5 py-2.5 rounded-xl text-sm font-bold hover:bg-emerald-700 shadow-sm transition-colors flex items-center justify-center min-w-[120px]">Enregistrer</button>
             </div>
         </div>
     </div>
 
-    <!-- MODALES EXISTANTES (Groupes, Catégories, Tiroir) -->
+    <!-- Modales existantes pour les groupes, catégories et le tiroir -->
     <div id="modal-groupes" class="fixed inset-0 bg-black/50 hidden flex items-center justify-center z-50 p-4">
         <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-xl max-h-[90vh] overflow-y-auto">
             <div class="flex justify-between items-center mb-4 border-b pb-3">

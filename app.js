@@ -944,7 +944,7 @@ window.chargerAstuces = function() {
 
 // Ouvre la modale en mode Création
 window.ouvrirModalAjoutAstuce = function() {
-    document.getElementById('modal-astuce-id').value = ''; // On vide l'ID
+    document.getElementById('modal-astuce-id').value = ''; 
     document.getElementById('modal-astuce-titre-h3').textContent = 'Nouvelle Astuce';
     
     document.getElementById('modal-ajout-astuce').classList.remove('hidden');
@@ -964,7 +964,11 @@ window.ouvrirModalAjoutAstuce = function() {
     // Vider les champs
     document.getElementById('modal-astuce-titre').value = '';
     document.getElementById('modal-astuce-contenu').value = '';
-    document.getElementById('modal-astuce-image').value = '';
+    
+    // Réinitialiser le champ fichier
+    document.getElementById('modal-astuce-file').value = '';
+    document.getElementById('modal-astuce-image-actuelle').value = '';
+    document.getElementById('texte-image-actuelle').classList.add('hidden');
 }
 
 // Ouvre la modale en mode Édition
@@ -972,7 +976,6 @@ window.editerAstuce = function(idAstuce) {
     const astuce = astucesGlobales.find(a => a.id === idAstuce);
     if (!astuce) return;
 
-    // Remplir l'ID caché pour savoir qu'on modifie
     document.getElementById('modal-astuce-id').value = astuce.id;
     document.getElementById('modal-astuce-titre-h3').textContent = 'Modifier l\'astuce';
 
@@ -986,12 +989,19 @@ window.editerAstuce = function(idAstuce) {
     });
     selectModal.value = astuce.exercice;
 
-    // Remplir les champs avec les données existantes
     document.getElementById('modal-astuce-titre').value = astuce.titre;
     document.getElementById('modal-astuce-contenu').value = astuce.contenu;
-    document.getElementById('modal-astuce-image').value = astuce.image_url || '';
+    
+    // Gérer l'image existante
+    document.getElementById('modal-astuce-file').value = ''; // On vide l'input file par défaut
+    document.getElementById('modal-astuce-image-actuelle').value = astuce.image_url || '';
+    
+    if (astuce.image_url) {
+        document.getElementById('texte-image-actuelle').classList.remove('hidden');
+    } else {
+        document.getElementById('texte-image-actuelle').classList.add('hidden');
+    }
 
-    // Afficher la modale
     document.getElementById('modal-ajout-astuce').classList.remove('hidden');
 }
 
@@ -999,48 +1009,96 @@ window.fermerModalAjoutAstuce = function() {
     document.getElementById('modal-ajout-astuce').classList.add('hidden');
 }
 
-// Sauvegarde : Insert (si nouvel ID) ou Update (si ID existant)
+// Sauvegarde l'image sur Supabase Storage, puis l'astuce dans la base de données
 window.sauvegarderAstuce = async function() {
     const idAstuce = document.getElementById('modal-astuce-id').value;
     const exercice = document.getElementById('modal-astuce-exercice').value;
     const titre = document.getElementById('modal-astuce-titre').value.trim();
     const contenu = document.getElementById('modal-astuce-contenu').value.trim();
-    const imageUrl = document.getElementById('modal-astuce-image').value.trim();
 
     if (!titre || !contenu) {
         alert("Le titre et le contenu sont obligatoires.");
         return;
     }
 
-    const donneesAstuce = {
-        exercice: exercice,
-        titre: titre,
-        contenu: contenu,
-        image_url: imageUrl || null
-    };
+    // Animation du bouton de sauvegarde
+    const btnSauvegarder = document.getElementById('btn-sauvegarder-astuce');
+    const texteOriginal = btnSauvegarder.textContent;
+    btnSauvegarder.textContent = "⏳ Envoi en cours...";
+    btnSauvegarder.disabled = true;
+    btnSauvegarder.classList.add('opacity-75', 'cursor-not-allowed');
 
-    if (idAstuce) {
-        // Mode ÉDITION (Update)
-        const { error } = await supabaseClient.from('astuces').update(donneesAstuce).eq('id', idAstuce);
-        if (error) { alert("Erreur lors de la modification : " + error.message); return; }
-    } else {
-        // Mode CRÉATION (Insert)
-        const { error } = await supabaseClient.from('astuces').insert([donneesAstuce]);
-        if (error) { alert("Erreur lors de la sauvegarde : " + error.message); return; }
+    try {
+        let imageUrl = document.getElementById('modal-astuce-image-actuelle').value;
+        const fileInput = document.getElementById('modal-astuce-file');
+        const file = fileInput.files[0];
+
+        // 1. Si l'utilisateur a sélectionné une nouvelle image, on l'envoie sur le Cloud
+        if (file) {
+            // Nettoyer le nom du fichier et ajouter un timestamp pour le rendre unique
+            const fileExt = file.name.split('.').pop();
+            const fileName = `astuce_${Date.now()}.${fileExt}`;
+            
+            // Upload sur Supabase
+            const { error: uploadError } = await supabaseClient.storage
+                .from('astuces-images')
+                .upload(fileName, file);
+
+            if (uploadError) {
+                alert("Erreur lors de l'envoi de l'image. Vérifiez vos permissions Supabase (Storage Policies) : " + uploadError.message);
+                throw uploadError;
+            }
+
+            // Récupérer le lien public magique généré par Supabase
+            const { data: urlData } = supabaseClient.storage
+                .from('astuces-images')
+                .getPublicUrl(fileName);
+            
+            imageUrl = urlData.publicUrl; // On remplace l'ancienne URL par la nouvelle
+        }
+
+        // 2. On prépare les données texte + l'URL de l'image (nouvelle ou ancienne)
+        const donneesAstuce = {
+            exercice: exercice,
+            titre: titre,
+            contenu: contenu,
+            image_url: imageUrl || null
+        };
+
+        // 3. Sauvegarde dans la base de données
+        if (idAstuce) {
+            // Mode ÉDITION
+            const { error } = await supabaseClient.from('astuces').update(donneesAstuce).eq('id', idAstuce);
+            if (error) throw error;
+        } else {
+            // Mode CRÉATION
+            const { error } = await supabaseClient.from('astuces').insert([donneesAstuce]);
+            if (error) throw error;
+        }
+
+        // Recharge les données pour l'affichage
+        const { data: astucesData } = await supabaseClient.from('astuces').select('*').order('id', { ascending: false });
+        astucesGlobales = astucesData || [];
+        
+        fermerModalAjoutAstuce();
+        document.getElementById('select-test-astuce').value = exercice; 
+        chargerAstuces();
+
+    } catch (err) {
+        console.error("Erreur de sauvegarde:", err);
+    } finally {
+        // Remet le bouton à son état normal
+        btnSauvegarder.textContent = texteOriginal;
+        btnSauvegarder.disabled = false;
+        btnSauvegarder.classList.remove('opacity-75', 'cursor-not-allowed');
     }
-
-    // Recharge les données pour l'affichage
-    const { data: astucesData } = await supabaseClient.from('astuces').select('*').order('id', { ascending: false });
-    astucesGlobales = astucesData || [];
-    
-    fermerModalAjoutAstuce();
-    document.getElementById('select-test-astuce').value = exercice; 
-    chargerAstuces();
 }
 
 window.supprimerAstuce = async function(idAstuce) {
     if (!confirm("Voulez-vous vraiment supprimer cette astuce ?")) return;
     
+    // Note : On supprime l'entrée dans la base. Idéalement il faudrait aussi supprimer l'image du bucket Storage, 
+    // mais pour ne pas complexifier le code maintenant, l'image restera orpheline dans le cloud.
     await supabaseClient.from('astuces').delete().eq('id', idAstuce);
     astucesGlobales = astucesGlobales.filter(a => a.id !== idAstuce);
     chargerAstuces();
