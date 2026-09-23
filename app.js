@@ -130,8 +130,8 @@ const getColorForClass = (num) => {
         2: '#E84E0F',
         3: '#F18700',
         4: '#FBBA00',
-        5: '#ffe600e8',
-        6: '#9ed800',
+        5: '#FFE600E8',
+        6: '#9ED800',
         7: '#02B74B',
         8: '#009ED4',
         9: '#003366'
@@ -344,8 +344,10 @@ function rendreLigneExerciceCompacte(ex) {
     let dernier = '-';
 
     if (nbEssais > 0) {
-        const somme = donnees.scores.reduce((a, b) => a + b, 0);
-        moyenne = Math.round(somme / nbEssais);
+        // Calcul de la moyenne sur les 15 derniers résultats maximum
+        const derniers15Scores = donnees.scores.slice(-15);
+        const somme = derniers15Scores.reduce((a, b) => a + b, 0);
+        moyenne = Math.round(somme / derniers15Scores.length);
         dernier = donnees.scores[nbEssais - 1];
     }
 
@@ -387,7 +389,7 @@ function rendreLigneExerciceCompacte(ex) {
     `;
 }
 
-// --- 6. SYNTHÈSE DROITE (Barres de score type Pilotest + Radar Chart) ---
+// --- 6. SYNTHÈSE DROITE (Barres de score basées sur les 15 derniers résultats) ---
 function genererSyntheseDroite() {
     const containerBarres = document.getElementById('synthese-barres-categories');
     if (!containerBarres) return;
@@ -418,7 +420,9 @@ function genererSyntheseDroite() {
         exList.forEach(ex => {
             const donnees = statsGlobales[ex];
             if (donnees && donnees.scores.length > 0) {
-                const moyenneEx = donnees.scores.reduce((a, b) => a + b, 0) / donnees.scores.length;
+                // Moyenne de l'exercice sur les 15 derniers résultats
+                const derniers15Scores = donnees.scores.slice(-15);
+                const moyenneEx = derniers15Scores.reduce((a, b) => a + b, 0) / derniers15Scores.length;
                 sommeMoyennesEx += moyenneEx;
                 nbExAvecScores++;
             }
@@ -436,7 +440,7 @@ function genererSyntheseDroite() {
 
     const moyenneGenerale = nbCatsValides > 0 ? (sommeTotaleMoyennes / nbCatsValides) : null;
 
-    // 1. Barre de moyenne générale en haut (chiffre en gris neutre text-slate-700)
+    // 1. Barre de moyenne générale en haut
     containerBarres.innerHTML += `
         <div class="bg-slate-50 p-3 rounded-xl border border-slate-200">
             <div class="flex justify-between items-center mb-1.5 text-xs font-bold text-slate-700">
@@ -450,7 +454,7 @@ function genererSyntheseDroite() {
         <div class="border-t my-3"></div>
     `;
 
-    // 2. Barres pour chaque catégorie (chiffre en gris neutre text-slate-600)
+    // 2. Barres pour chaque catégorie
     if (nomsCats.length === 0) {
         containerBarres.innerHTML += `<p class="text-xs text-slate-400 text-center py-4">Aucune catégorie définie pour ce groupe.</p>`;
     } else {
@@ -680,8 +684,9 @@ window.ouvrirDrawer = function(nomExercice) {
     let dateRecord = 'Aucun record';
 
     if (nbEssais > 0) {
-        const somme = donnees.scores.reduce((a, b) => a + b, 0);
-        moyenne = Math.round(somme / nbEssais);
+        const derniers15Scores = donnees.scores.slice(-15);
+        const somme = derniers15Scores.reduce((a, b) => a + b, 0);
+        moyenne = Math.round(somme / derniers15Scores.length);
         dernier = donnees.scores[nbEssais - 1];
         let maxScore = Math.max(...donnees.scores);
         record = maxScore;
