@@ -60,7 +60,6 @@ let barChart = null;
 let radarChart = null;
 let exerciceActuelDrawer = null;
 
-// Tableau qui va stocker toutes les astuces venues de Supabase
 let astucesGlobales = [];
 
 // --- 3. CHARGEMENT DEPUIS LE CLOUD ---
@@ -332,9 +331,10 @@ function rendreLigneExerciceCompacte(ex) {
     let dernier = '-';
 
     if (nbEssais > 0) {
-        const derniers15Scores = donnees.scores.slice(-15);
-        const somme = derniers15Scores.reduce((a, b) => a + b, 0);
-        moyenne = Math.round(somme / derniers15Scores.length);
+        // MODIFICATION ICI : Calcul sur les 10 derniers scores au lieu de 15
+        const derniers10Scores = donnees.scores.slice(-10);
+        const somme = derniers10Scores.reduce((a, b) => a + b, 0);
+        moyenne = Math.round(somme / derniers10Scores.length);
         dernier = donnees.scores[nbEssais - 1];
     }
 
@@ -406,8 +406,9 @@ function genererSyntheseDroite() {
         exList.forEach(ex => {
             const donnees = statsGlobales[ex];
             if (donnees && donnees.scores.length > 0) {
-                const derniers15Scores = donnees.scores.slice(-15);
-                const moyenneEx = derniers15Scores.reduce((a, b) => a + b, 0) / derniers15Scores.length;
+                // MODIFICATION ICI : Calcul sur les 10 derniers scores au lieu de 15
+                const derniers10Scores = donnees.scores.slice(-10);
+                const moyenneEx = derniers10Scores.reduce((a, b) => a + b, 0) / derniers10Scores.length;
                 sommeMoyennesEx += moyenneEx;
                 nbExAvecScores++;
             }
@@ -497,7 +498,6 @@ function mettreAJourRadarChart(labels, moyennesMap) {
         }
     });
 }
-
 
 // --- MODALES DE GESTION DES CATÉGORIES ET GROUPES ---
 window.ouvrirModalCategories = function(nomCatEdit = null) {
@@ -635,9 +635,10 @@ window.ouvrirDrawer = function(nomExercice) {
     let dateRecord = 'Aucun record';
 
     if (nbEssais > 0) {
-        const derniers15Scores = donnees.scores.slice(-15);
-        const somme = derniers15Scores.reduce((a, b) => a + b, 0);
-        moyenne = Math.round(somme / derniers15Scores.length);
+        // MODIFICATION ICI AUSSI : Calcul sur les 10 derniers scores dans le tiroir
+        const derniers10Scores = donnees.scores.slice(-10);
+        const somme = derniers10Scores.reduce((a, b) => a + b, 0);
+        moyenne = Math.round(somme / derniers10Scores.length);
         dernier = donnees.scores[nbEssais - 1];
         let maxScore = Math.max(...donnees.scores);
         record = maxScore;
@@ -925,7 +926,6 @@ window.chargerAstuces = function() {
             `;
         }
 
-        // Ajout du bouton Éditer ici !
         grille.innerHTML += `
             <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-md transition-shadow flex flex-col">
                 ${imageHtml}
@@ -942,7 +942,6 @@ window.chargerAstuces = function() {
     });
 }
 
-// Ouvre la modale en mode Création
 window.ouvrirModalAjoutAstuce = function() {
     document.getElementById('modal-astuce-id').value = ''; 
     document.getElementById('modal-astuce-titre-h3').textContent = 'Nouvelle Astuce';
@@ -961,17 +960,14 @@ window.ouvrirModalAjoutAstuce = function() {
     const selectPage = document.getElementById('select-test-astuce').value;
     if (selectPage) selectModal.value = selectPage;
 
-    // Vider les champs
     document.getElementById('modal-astuce-titre').value = '';
     document.getElementById('modal-astuce-contenu').value = '';
     
-    // Réinitialiser le champ fichier
     document.getElementById('modal-astuce-file').value = '';
     document.getElementById('modal-astuce-image-actuelle').value = '';
     document.getElementById('texte-image-actuelle').classList.add('hidden');
 }
 
-// Ouvre la modale en mode Édition
 window.editerAstuce = function(idAstuce) {
     const astuce = astucesGlobales.find(a => a.id === idAstuce);
     if (!astuce) return;
@@ -992,8 +988,7 @@ window.editerAstuce = function(idAstuce) {
     document.getElementById('modal-astuce-titre').value = astuce.titre;
     document.getElementById('modal-astuce-contenu').value = astuce.contenu;
     
-    // Gérer l'image existante
-    document.getElementById('modal-astuce-file').value = ''; // On vide l'input file par défaut
+    document.getElementById('modal-astuce-file').value = ''; 
     document.getElementById('modal-astuce-image-actuelle').value = astuce.image_url || '';
     
     if (astuce.image_url) {
@@ -1009,7 +1004,6 @@ window.fermerModalAjoutAstuce = function() {
     document.getElementById('modal-ajout-astuce').classList.add('hidden');
 }
 
-// Sauvegarde l'image sur Supabase Storage, puis l'astuce dans la base de données
 window.sauvegarderAstuce = async function() {
     const idAstuce = document.getElementById('modal-astuce-id').value;
     const exercice = document.getElementById('modal-astuce-exercice').value;
@@ -1021,7 +1015,6 @@ window.sauvegarderAstuce = async function() {
         return;
     }
 
-    // Animation du bouton de sauvegarde
     const btnSauvegarder = document.getElementById('btn-sauvegarder-astuce');
     const texteOriginal = btnSauvegarder.textContent;
     btnSauvegarder.textContent = "⏳ Envoi en cours...";
@@ -1033,31 +1026,26 @@ window.sauvegarderAstuce = async function() {
         const fileInput = document.getElementById('modal-astuce-file');
         const file = fileInput.files[0];
 
-        // 1. Si l'utilisateur a sélectionné une nouvelle image, on l'envoie sur le Cloud
         if (file) {
-            // Nettoyer le nom du fichier et ajouter un timestamp pour le rendre unique
             const fileExt = file.name.split('.').pop();
             const fileName = `astuce_${Date.now()}.${fileExt}`;
             
-            // Upload sur Supabase
             const { error: uploadError } = await supabaseClient.storage
                 .from('astuces-images')
                 .upload(fileName, file);
 
             if (uploadError) {
-                alert("Erreur lors de l'envoi de l'image. Vérifiez vos permissions Supabase (Storage Policies) : " + uploadError.message);
+                alert("Erreur lors de l'envoi de l'image : " + uploadError.message);
                 throw uploadError;
             }
 
-            // Récupérer le lien public magique généré par Supabase
             const { data: urlData } = supabaseClient.storage
                 .from('astuces-images')
                 .getPublicUrl(fileName);
             
-            imageUrl = urlData.publicUrl; // On remplace l'ancienne URL par la nouvelle
+            imageUrl = urlData.publicUrl; 
         }
 
-        // 2. On prépare les données texte + l'URL de l'image (nouvelle ou ancienne)
         const donneesAstuce = {
             exercice: exercice,
             titre: titre,
@@ -1065,18 +1053,14 @@ window.sauvegarderAstuce = async function() {
             image_url: imageUrl || null
         };
 
-        // 3. Sauvegarde dans la base de données
         if (idAstuce) {
-            // Mode ÉDITION
             const { error } = await supabaseClient.from('astuces').update(donneesAstuce).eq('id', idAstuce);
             if (error) throw error;
         } else {
-            // Mode CRÉATION
             const { error } = await supabaseClient.from('astuces').insert([donneesAstuce]);
             if (error) throw error;
         }
 
-        // Recharge les données pour l'affichage
         const { data: astucesData } = await supabaseClient.from('astuces').select('*').order('id', { ascending: false });
         astucesGlobales = astucesData || [];
         
@@ -1087,7 +1071,6 @@ window.sauvegarderAstuce = async function() {
     } catch (err) {
         console.error("Erreur de sauvegarde:", err);
     } finally {
-        // Remet le bouton à son état normal
         btnSauvegarder.textContent = texteOriginal;
         btnSauvegarder.disabled = false;
         btnSauvegarder.classList.remove('opacity-75', 'cursor-not-allowed');
@@ -1096,9 +1079,6 @@ window.sauvegarderAstuce = async function() {
 
 window.supprimerAstuce = async function(idAstuce) {
     if (!confirm("Voulez-vous vraiment supprimer cette astuce ?")) return;
-    
-    // Note : On supprime l'entrée dans la base. Idéalement il faudrait aussi supprimer l'image du bucket Storage, 
-    // mais pour ne pas complexifier le code maintenant, l'image restera orpheline dans le cloud.
     await supabaseClient.from('astuces').delete().eq('id', idAstuce);
     astucesGlobales = astucesGlobales.filter(a => a.id !== idAstuce);
     chargerAstuces();
