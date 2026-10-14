@@ -17,6 +17,7 @@ const tousLesExercices = [
     "Calcul mental 2", 
     "Calcul mental 3", 
     "Calcul mental 4", 
+    "Calcul et mémorisation",
     "Camionneur 1",
     "Camionneur 2",
     "Camionneur 3",
@@ -51,7 +52,10 @@ const tousLesExercices = [
     "Tangram", 
     "Tangram à compléter", 
     "Test des compteurs", 
+    "Test de repérage d'objets"
     "Trouvez l'intrus @Air France", 
+    "TMRL1",
+    "TMRL2",
     "Un mot sur deux", 
     "Voitures (basique)", 
     "Voitures (séquentiel)"
