@@ -52,8 +52,8 @@ const tousLesExercices = [
     "Tangram", 
     "Tangram à compléter", 
     "Test des compteurs", 
-    "Test de repérage d'objets"
-    "Trouvez l'intrus @Air France", 
+    "Test de repérage d'objets",
+    "Trouvez l'intrus @Air France",
     "TMRL1",
     "TMRL2",
     "Un mot sur deux", 
